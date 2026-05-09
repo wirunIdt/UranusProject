@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="theme-color" content="#3fb950">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ARIA">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/static/icons/icon.svg">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARIA — Terminal</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #0d1117; color: #c9d1d9; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 14px; overflow: hidden; }
+
+/* Layout */
+#app { display: grid; grid-template-columns: 200px 1fr 220px; grid-template-rows: 40px 1fr 52px; height: 100vh; }
+
+/* Top bar */
+#topbar {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 10px; padding: 0 14px;
+  background: #161b22; border-bottom: 1px solid #30363d;
+}
+.logo { color: #58a6ff; font-weight: 700; font-size: 15px; letter-spacing: 1px; }
+.nav a {
+  color: #8b949e; text-decoration: none; font-size: 13px;
+  padding: 4px 10px; border-radius: 4px; transition: all .15s;
+}
+.nav a:hover { color: #c9d1d9; background: #21262d; }
+.nav a.active { color: #58a6ff; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.status-dot { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8b949e; }
+.dot { width: 7px; height: 7px; border-radius: 50%; }
+.dot.green { background: #3fb950; } .dot.yellow { background: #d29922; } .dot.red { background: #f85149; }
+select#model-sel {
+  background: #21262d; border: 1px solid #30363d; color: #c9d1d9;
+  padding: 3px 8px; font-family: inherit; font-size: 12px; border-radius: 4px; cursor: pointer;
+}
+
+/* Left sidebar */
+#left-panel {
+  background: #161b22; border-right: 1px solid #30363d;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.panel-title {
+  padding: 8px 12px; font-size: 11px; font-weight: 700; color: #8b949e;
+  letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid #21262d;
+}
+.panel-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #30363d transparent; }
+.panel-scroll::-webkit-scrollbar { width: 4px; }
+.panel-scroll::-webkit-scrollbar-thumb { background: #30363d; }
+
+/* Stat rows */
+.stat-row { display: flex; justify-content: space-between; padding: 5px 12px; font-size: 12px; border-bottom: 1px solid #0d1117; }
+.stat-l { color: #8b949e; }
+.stat-v { color: #c9d1d9; font-weight: 600; }
+.bar-wrap { padding: 3px 12px 5px; }
+.bar { height: 3px; background: #21262d; border-radius: 2px; }
+.bar-fill { height: 100%; border-radius: 2px; background: #58a6ff; transition: width .5s; }
+
+/* Model list */
+.model-item { padding: 6px 12px; font-size: 12px; color: #8b949e; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background .1s; }
+.model-item:hover { background: #21262d; color: #c9d1d9; }
+.model-item.current { color: #3fb950; }
+.model-dot { width: 6px; height: 6px; border-radius: 50%; background: #30363d; flex-shrink: 0; }
+.model-item.current .model-dot { background: #3fb950; }
+
+/* Quick commands */
+.qcmd { padding: 4px 12px; font-size: 12px; color: #6e7681; cursor: pointer; transition: color .1s; }
+.qcmd span { color: #58a6ff; }
+.qcmd:hover { color: #c9d1d9; background: #21262d; }
+
+/* Center terminal */
+#terminal {
+  display: flex; flex-direction: column; overflow: hidden; background: #0d1117;
+}
+#output {
+  flex: 1; overflow-y: auto; padding: 12px 16px;
+  scrollbar-width: thin; scrollbar-color: #30363d transparent;
+  font-size: 13px; line-height: 1.7;
+}
+#output::-webkit-scrollbar { width: 5px; }
+#output::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+/* Output lines */
+.line { display: flex; gap: 8px; margin: 1px 0; word-break: break-all; }
+.pfx { flex-shrink: 0; user-select: none; }
+.txt { flex: 1; white-space: pre-wrap; }
+.line-user .pfx { color: #3fb950; } .line-user .txt { color: #3fb950; }
+.line-ai   .pfx { color: #58a6ff; } .line-ai   .txt { color: #c9d1d9; }
+.line-sys  .pfx { color: #30363d; } .line-sys  .txt { color: #8b949e; font-size: 12px; }
+.line-ok   .pfx { color: #3fb950; } .line-ok   .txt { color: #3fb950; }
+.line-err  .pfx { color: #f85149; } .line-err  .txt { color: #f85149; }
+.line-warn .pfx { color: #d29922; } .line-warn .txt { color: #d29922; }
+.line-code .txt { background: #161b22; border-left: 2px solid #30363d; padding: 6px 10px; border-radius: 3px; display: block; font-size: 12px; color: #a5d6ff; }
+.cursor { display: inline-block; width: 8px; height: 14px; background: #58a6ff; animation: blink .7s step-end infinite; vertical-align: middle; margin-left: 2px; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* Table */
+.tbl { border-collapse: collapse; font-size: 12px; margin: 4px 0; width: 100%; }
+.tbl th { color: #d29922; text-align: left; padding: 3px 10px; border-bottom: 1px solid #30363d; letter-spacing: .5px; font-size: 11px; }
+.tbl td { padding: 3px 10px; color: #c9d1d9; border-bottom: 1px solid #21262d; }
+.tbl tr:hover td { background: #161b22; }
+
+/* Right panel */
+#right-panel {
+  background: #161b22; border-left: 1px solid #30363d;
+  display: flex; flex-direction: column; overflow: hidden;
+  width: 220px;
+}
+.rp-scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #30363d transparent; }
+.rp-scroll::-webkit-scrollbar { width: 3px; }
+.rp-scroll::-webkit-scrollbar-thumb { background: #30363d; }
+
+/* Section header */
+.rp-sec { padding: 5px 12px 3px; font-size: 9px; font-weight: 700; color: #8b949e;
+  letter-spacing: 1.8px; text-transform: uppercase; margin-top: 8px;
+  display: flex; align-items: center; justify-content: space-between; }
+.rp-sec:first-child { margin-top: 0; }
+.rp-sec-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* Metric row */
+.m-row { padding: 3px 12px; display: flex; align-items: center; justify-content: space-between; }
+.m-label { font-size: 11px; color: #8b949e; }
+.m-value { font-size: 11px; font-weight: 700; color: #c9d1d9; font-family: inherit; }
+.m-value.ok  { color: #3fb950; } .m-value.warn { color: #d29922; } .m-value.err { color: #f85149; }
+.m-value.blue{ color: #58a6ff; }
+
+/* Stat bar */
+.bar-row { padding: 1px 12px 4px; }
+.s-bar { height: 4px; background: #21262d; border-radius: 2px; position: relative; overflow: hidden; }
+.s-fill { height: 100%; border-radius: 2px; transition: width .6s ease; position: relative; }
+.s-fill::after { content:''; position:absolute; top:0; left:-100%; width:60%; height:100%;
+  background: rgba(255,255,255,.15); animation: shimmer 2s infinite; }
+@keyframes shimmer { to { left:200%; } }
+
+/* Core grid */
+.core-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 3px; padding: 3px 12px 5px; }
+.core-cell { background: #21262d; border-radius: 3px; padding: 3px 2px; text-align: center; }
+.core-id  { font-size: 8px; color: #6e7681; }
+.core-pct { font-size: 10px; font-weight: 700; }
+
+/* Gauge ring (mini SVG) */
+.gauge-row { padding: 5px 12px; display: flex; align-items: center; gap: 10px; }
+.gauge-info { flex: 1; }
+.gauge-title { font-size: 11px; color: #c9d1d9; font-weight: 600; }
+.gauge-sub   { font-size: 10px; color: #8b949e; margin-top: 1px; }
+
+/* Model selector */
+.model-sel-wrap { padding: 4px 10px; }
+#rp-model-sel {
+  width: 100%; background: #21262d; border: 1px solid #30363d; color: #c9d1d9;
+  padding: 5px 8px; font-family: inherit; font-size: 11px; border-radius: 4px; cursor: pointer;
+}
+#rp-model-sel:focus { outline: none; border-color: #58a6ff; }
+.model-active-row { padding: 3px 12px 5px; display: flex; align-items: center; gap: 6px; }
+.model-dot-active { width: 7px; height: 7px; border-radius: 50%; background: #3fb950;
+  box-shadow: 0 0 5px #3fb950; flex-shrink: 0; animation: pulse-dot 2s ease-in-out infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+/* Peers */
+.peer-item { padding: 6px 12px; font-size: 11px; display: flex; align-items: center; gap: 7px; border-bottom: 1px solid #0d1117; cursor: pointer; transition: background .1s; }
+.peer-item:hover { background: #21262d; }
+.peer-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.peer-info { flex: 1; min-width: 0; }
+.peer-name { color: #c9d1d9; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.peer-ip   { color: #6e7681; font-size: 10px; margin-top: 1px; }
+.peer-ping { font-size: 10px; color: #3fb950; font-weight: 700; flex-shrink: 0; }
+
+/* Quick cmd buttons */
+.quick-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 4px; padding: 4px 10px; }
+.q-btn {
+  padding: 4px 6px; background: #21262d; border: 1px solid #30363d; color: #8b949e;
+  font-family: inherit; font-size: 10px; cursor: pointer; border-radius: 3px;
+  text-align: left; transition: all .12s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.q-btn span { color: #58a6ff; }
+.q-btn:hover { background: #30363d; color: #c9d1d9; border-color: #8b949e; }
+
+/* Inbox messages */
+.inbox-msg { padding: 6px 12px; border-bottom: 1px solid #0d1117; }
+.inbox-from { font-size: 10px; font-weight: 700; color: #d29922; display: flex; justify-content: space-between; }
+.inbox-from .im-time { color: #6e7681; font-weight: 400; }
+.inbox-body { font-size: 11px; color: #c9d1d9; margin-top: 2px; }
+.inbox-empty { padding: 8px 12px; font-size: 11px; color: #6e7681; font-style: italic; }
+
+/* Alerts */
+.alert-item { padding: 6px 10px; border-bottom: 1px solid #0d1117; display: flex; align-items: flex-start; gap: 7px; }
+.al-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+.al-red    { background: #f85149; } .al-yellow { background: #d29922; }
+.al-green  { background: #3fb950; } .al-blue   { background: #58a6ff; }
+.al-body   { flex: 1; min-width: 0; }
+.al-t      { font-size: 11px; color: #c9d1d9; font-weight: 600; }
+.al-sub    { font-size: 10px; color: #8b949e; margin-top: 1px; }
+.al-time   { font-size: 9px; color: #6e7681; margin-top: 2px; }
+.al-x      { color: #6e7681; cursor: pointer; font-size: 13px; flex-shrink: 0; line-height: 1; }
+.al-x:hover { color: #f85149; }
+
+/* Uptime */
+.uptime-row { padding: 4px 12px; display: flex; align-items: baseline; gap: 5px; }
+.uptime-val  { font-size: 18px; font-weight: 700; color: #3fb950; line-height: 1; font-family: inherit; }
+.uptime-unit { font-size: 9px; color: #8b949e; }
+
+/* Separator line */
+.rp-div { height: 1px; background: #21262d; margin: 4px 0; }
+
+/* History */
+.hist-item { padding: 3px 12px; font-size: 11px; color: #6e7681; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-item:hover { background: #21262d; color: #c9d1d9; }
+
+/* Input bar */
+#inputbar {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 10px; padding: 8px 14px;
+  background: #161b22; border-top: 1px solid #30363d;
+  position: relative;
+}
+.prompt { color: #3fb950; font-size: 15px; white-space: nowrap; flex-shrink: 0; }
+#cmd { flex: 1; background: transparent; border: none; outline: none; color: #3fb950; font-family: inherit; font-size: 14px; caret-color: #3fb950; }
+#cmd::placeholder { color: #30363d; }
+.send-btn { background: none; border: 1px solid #3fb950; color: #3fb950; padding: 4px 14px; cursor: pointer; font-family: inherit; border-radius: 4px; font-size: 12px; transition: all .15s; }
+.send-btn:hover { background: rgba(63,185,80,.15); }
+
+/* Hint box */
+#hintbox { position: absolute; bottom: 60px; left: 14px; right: 14px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; z-index: 50; display: none; max-height: 220px; overflow-y: auto; }
+.hitem { display: flex; gap: 12px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
+.hitem:hover, .hitem.sel { background: #21262d; }
+.hcmd { color: #58a6ff; min-width: 140px; flex-shrink: 0; font-weight: 600; }
+.hdesc { color: #8b949e; }
+
+/* Hamburger mobile nav */
+.aria-hamburger{display:none;background:none;border:none;color:#8b949e;font-size:19px;cursor:pointer;padding:3px;line-height:1;flex-shrink:0}
+.aria-mobile-nav{display:none;position:fixed;top:40px;left:0;right:0;z-index:99;background:#161b22;border-bottom:1px solid #30363d;padding:6px 10px;flex-direction:column;gap:1px}
+.aria-mobile-nav.open{display:flex}
+.aria-mobile-nav a{color:#8b949e;text-decoration:none;font-size:12px;padding:8px 10px;border-radius:4px}
+.aria-mobile-nav a:hover{background:#21262d;color:#c9d1d9}
+.refresh-dot{width:7px;height:7px;border-radius:50%;background:#d29922;animation:blink .7s step-end infinite}
+.refresh-dot.green{background:#3fb950}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@media(max-width:768px){
+  .aria-hamburger{display:block}
+  #topbar .nav{display:none}
+  #app{grid-template-columns:1fr!important}
+  #left-panel,#right-panel{display:none!important}
+  #terminal{min-height:calc(100vh - 120px)}
+  #output{font-size:12px}
+  #inputbar{padding:6px 10px;gap:6px}
+  #cmd{font-size:12px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <span class="logo">ARIA</span>
+  <nav class="nav">
+    <a href="/"        class="active">Terminal</a>
+    <a href="/code">Code IDE</a>
+    <a href="/network">Network</a>
+    <a href="/intranet">Intranet</a>
+    <a href="/status">Status</a>
+  </nav>
+  <div class="topbar-right">
+    <div class="status-dot"><div class="dot" id="ol-dot" style="background:#d29922"></div><span id="ol-txt">Ollama...</span></div>
+    <div class="status-dot"><div class="dot green"></div><span id="peers-txt">0 peers</span></div>
+    <select id="model-sel" onchange="switchModel(this.value)"><option>Loading...</option></select>
+  </div>
+</div>
+
+<!-- LEFT: System stats + Models + Quick cmds -->
+<div id="left-panel">
+  <div class="panel-title">System</div>
+  <div class="panel-scroll">
+    <div class="stat-row"><span class="stat-l">CPU</span><span class="stat-v" id="s-cpu">--</span></div>
+    <div class="bar-wrap"><div class="bar"><div class="bar-fill" id="b-cpu" style="width:0%"></div></div></div>
+    <div class="stat-row"><span class="stat-l">RAM</span><span class="stat-v" id="s-ram">--</span></div>
+    <div class="bar-wrap"><div class="bar"><div class="bar-fill" id="b-ram" style="width:0%;background:#d29922"></div></div></div>
+    <div class="stat-row"><span class="stat-l">Disk</span><span class="stat-v" id="s-disk">--</span></div>
+    <div class="stat-row"><span class="stat-l">Uptime</span><span class="stat-v" id="s-up">--</span></div>
+    <div class="stat-row"><span class="stat-l">IP</span><span class="stat-v" id="s-ip" style="font-size:11px">--</span></div>
+
+    <div class="panel-title" style="margin-top:4px">Models</div>
+    <div id="model-list"></div>
+
+    <div class="panel-title" style="margin-top:4px">Quick</div>
+    <div class="qcmd" onclick="ins('/status')"><span>/status</span> system info</div>
+    <div class="qcmd" onclick="ins('/ps')"><span>/ps</span> processes</div>
+    <div class="qcmd" onclick="ins('/models')"><span>/models</span> list models</div>
+    <div class="qcmd" onclick="ins('/peers')"><span>/peers</span> mesh nodes</div>
+    <div class="qcmd" onclick="ins('/play ')"><span>/play</span> music</div>
+    <div class="qcmd" onclick="ins('/vol ')"><span>/vol</span> 0-100</div>
+    <div class="qcmd" onclick="ins('/ls ')"><span>/ls</span> list dir</div>
+    <div class="qcmd" onclick="ins('/git status')"><span>/git</span> status</div>
+    <div class="qcmd" onclick="ins('/warmode')"><span>/warmode</span> war mode</div>
+    <div class="qcmd" onclick="ins('/broadcast ')"><span>/broadcast</span> mesh</div>
+    <div class="qcmd" onclick="ins('/clear')"><span>/clear</span> clear screen</div>
+    <div class="qcmd" onclick="ins('/help')"><span>/help</span> all commands</div>
+    <div class="qcmd" onclick="ins('/history')"><span>/history</span> saved history</div>
+    <div class="qcmd" onclick="exportHistory()"><span>/export</span> download .txt</div>
+    <div class="qcmd" onclick="if(confirm('Delete all history?'))clearHistory()"><span style="color:#f85149">/clrhist</span> clear history</div>
+    <div class="panel-title" style="margin-top:4px">Tools</div>
+    <div class="qcmd" onclick="ins('/upload')"><span>/upload</span> file → AI</div>
+    <div class="qcmd" onclick="ins('/uploads')"><span>/uploads</span> list files</div>
+    <div class="qcmd" onclick="ins('/weather Bangkok')"><span>/weather</span> forecast</div>
+    <div class="qcmd" onclick="ins('/hotspot')"><span>/hotspot</span> status</div>
+    <div class="qcmd" onclick="ins('/hotspot on ARIA-Net aria1234')"><span>/hotspot on</span> share net</div>
+    <div class="qcmd" onclick="ins('/alertconfig')"><span>/alertconfig</span> setup alert</div>
+    <div class="qcmd" onclick="ins('/alert ARIA | ')"><span>/alert</span> send notification</div>
+
+    <div class="panel-title" style="margin-top:4px">History</div>
+    <div id="hist-list"></div>
+  </div>
+</div>
+
+<!-- CENTER: Output -->
+<div id="terminal">
+  <div id="output"></div>
+</div>
+
+<!-- RIGHT: Full Status Panel -->
+<div id="right-panel">
+<div class="rp-scroll">
+
+  <!-- SYSTEM -->
+  <div class="rp-sec"><span>⚡ System</span><div class="rp-sec-dot" id="sys-dot" style="background:#d29922"></div></div>
+
+  <div class="m-row"><span class="m-label">CPU</span><span class="m-value" id="rp-cpu">--</span></div>
+  <div class="bar-row"><div class="s-bar"><div class="s-fill" id="rp-cpu-bar" style="width:0%;background:#58a6ff"></div></div></div>
+
+  <div class="core-grid" id="rp-cores"></div>
+
+  <div class="m-row"><span class="m-label">RAM</span><span class="m-value" id="rp-ram">--</span></div>
+  <div class="bar-row"><div class="s-bar"><div class="s-fill" id="rp-ram-bar" style="width:0%;background:#d29922"></div></div></div>
+
+  <div class="m-row"><span class="m-label">Disk</span><span class="m-value" id="rp-disk">--</span></div>
+  <div class="bar-row"><div class="s-bar"><div class="s-fill" id="rp-disk-bar" style="width:0%;background:#8b949e"></div></div></div>
+
+  <!-- GPU row (shown if available) -->
+  <div id="rp-gpu-wrap" style="display:none">
+    <div class="m-row"><span class="m-label">GPU</span><span class="m-value blue" id="rp-gpu-name">--</span></div>
+    <div class="m-row"><span class="m-label" style="padding-left:4px">Util</span><span class="m-value" id="rp-gpu-util">--</span></div>
+    <div class="bar-row"><div class="s-bar"><div class="s-fill" id="rp-gpu-bar" style="width:0%;background:#58a6ff"></div></div></div>
+    <div class="m-row"><span class="m-label" style="padding-left:4px">Temp</span><span class="m-value" id="rp-gpu-temp">--</span></div>
+  </div>
+
+  <div class="rp-div"></div>
+  <div class="m-row"><span class="m-label">Uptime</span><span class="m-value ok" id="rp-uptime">--</span></div>
+  <div class="m-row"><span class="m-label">IP</span><span class="m-value blue" id="rp-ip" style="font-size:10px">--</span></div>
+  <div class="m-row"><span class="m-label">Mesh</span><span class="m-value" id="rp-peers-c" style="color:#8b949e">--</span></div>
+
+  <!-- MODEL -->
+  <div class="rp-sec" style="margin-top:10px"><span>◎ Model</span><span id="rp-ol-badge" style="font-size:9px;color:#8b949e">checking...</span></div>
+  <div class="model-active-row"><div class="model-dot-active" id="rp-ol-dot" style="background:#d29922;box-shadow:none"></div><span style="font-size:11px;color:#c9d1d9;font-weight:600" id="rp-model-name">--</span></div>
+  <div class="model-sel-wrap">
+    <select id="rp-model-sel" onchange="switchModel(this.value)"><option>Loading...</option></select>
+  </div>
+
+  <!-- MESH PEERS -->
+  <div class="rp-sec" style="margin-top:8px"><span>◉ Mesh Peers</span><button onclick="run('scan','')" style="background:none;border:none;color:#8b949e;cursor:pointer;font-size:11px;font-family:inherit;padding:0" title="Scan">↺</button></div>
+  <div id="rp-peer-list">
+    <div class="peer-item"><div class="peer-dot" style="background:#58a6ff"></div><div class="peer-info"><div class="peer-name">This node</div><div class="peer-ip">localhost</div></div></div>
+  </div>
+
+  <!-- QUICK -->
+  <div class="rp-sec" style="margin-top:8px"><span>⚡ Quick</span></div>
+  <div class="quick-grid">
+    <button class="q-btn" onclick="ins('/status')"><span>/status</span></button>
+    <button class="q-btn" onclick="ins('/ps')"><span>/ps</span> procs</button>
+    <button class="q-btn" onclick="ins('/mem')"><span>/mem</span></button>
+    <button class="q-btn" onclick="ins('/peers')"><span>/peers</span></button>
+    <button class="q-btn" onclick="ins('/models')"><span>/models</span></button>
+    <button class="q-btn" onclick="ins('/ip')"><span>/ip</span></button>
+    <button class="q-btn" onclick="ins('/scan')"><span>/scan</span> LAN</button>
+    <button class="q-btn" onclick="ins('/broadcast ')"><span>/broadcast</span></button>
+    <button class="q-btn" onclick="ins('/warmode')"><span>/warmode</span></button>
+    <button class="q-btn" onclick="ins('/git status')"><span>/git</span> status</button>
+    <button class="q-btn" onclick="ins('/clear')"><span>/clear</span></button>
+    <button class="q-btn" onclick="ins('/help')"><span>/help</span></button>
+  </div>
+
+  <!-- MESH INBOX -->
+  <div class="rp-sec" style="margin-top:8px"><span>📨 Mesh Inbox</span><span id="rp-inbox-c" style="font-size:9px;color:#8b949e;background:#21262d;padding:1px 5px;border-radius:8px">0</span></div>
+  <div id="rp-inbox"><div class="inbox-empty">No messages</div></div>
+
+  <!-- ALERTS -->
+  <div class="rp-sec" style="margin-top:8px"><span>🔔 Alerts</span><button onclick="document.getElementById('rp-alerts').innerHTML='<div class=\'inbox-empty\'>Cleared</div>'" style="background:none;border:none;color:#6e7681;cursor:pointer;font-size:10px;font-family:inherit">clear all</button></div>
+  <div id="rp-alerts">
+    <div class="alert-item"><div class="al-dot al-red"></div><div class="al-body"><div class="al-t">MAREA fault</div><div class="al-sub">Virginia → Spain down</div><div class="al-time">2m ago</div></div><span class="al-x" onclick="this.closest('.alert-item').remove()">×</span></div>
+    <div class="alert-item"><div class="al-dot al-yellow"></div><div class="al-body"><div class="al-t">AAE-1 partial</div><div class="al-sub">Bandwidth -35%</div><div class="al-time">8m ago</div></div><span class="al-x" onclick="this.closest('.alert-item').remove()">×</span></div>
+    <div class="alert-item"><div class="al-dot al-blue"></div><div class="al-body"><div class="al-t">3 mesh nodes</div><div class="al-sub">Joined LAN</div><div class="al-time">12m ago</div></div><span class="al-x" onclick="this.closest('.alert-item').remove()">×</span></div>
+    <div class="alert-item"><div class="al-dot al-green"></div><div class="al-body"><div class="al-t">Ollama ready</div><div class="al-sub">Model loaded OK</div><div class="al-time">1h ago</div></div><span class="al-x" onclick="this.closest('.alert-item').remove()">×</span></div>
+  </div>
+
+  <div style="height:8px"></div>
+</div>
+</div>
+
+<!-- INPUT BAR -->
+<div id="inputbar">
+  <div id="hintbox"></div>
+  <span class="prompt" id="prompt">ARIA ❯</span>
+  <input id="cmd" placeholder="type /help for all commands..." autocomplete="off" spellcheck="false"
+    oninput="onInput()" onkeydown="onKey(event)">
+  <label class="send-btn" style="cursor:pointer;background:none;border-color:#8b949e;color:#8b949e;margin-right:2px" title="Upload file to AI">
+    📎
+    <input type="file" style="display:none" onchange="handleFileUpload(this)">
+  </label>
+  <button id="voice-btn" class="send-btn" onclick="toggleVoice()" title="Voice input (click to speak)" style="padding:4px 10px">🎤</button>
+  <button id="tts-btn" class="send-btn" onclick="toggleTTS()" title="Toggle AI voice response" style="padding:4px 10px">🔊</button>
+  <button class="send-btn" onclick="doSend()">↵ SEND</button>
+  <div id="pwa-install-btn" onclick="installPWA()" title="Install ARIA as App" style="display:none;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#58a6ff;border:1px solid #58a6ff;padding:3px 9px;border-radius:4px;background:none;margin-left:4px">📲 Install</div>
+  <div id="voice-preview" style="display:none;position:absolute;bottom:60px;left:50%;transform:translateX(-50%);background:#161b22;border:1px solid #30363d;border-radius:4px;padding:4px 12px;font-size:11px;color:#d29922;pointer-events:none"></div>
+</div>
+
+</div><!-- end #app -->
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+let streaming = false, currentModel = '', histIdx = -1;
+const hist = [];
+
+// ── LocalStorage keys ─────────────────────────────────────────────────────
+const LS_CMD  = 'aria_cmd_hist';
+const LS_CHAT = 'aria_chat_hist';
+const LS_MAX_CMD  = 200;
+const LS_MAX_CHAT = 500;
+
+// ── Persist helpers ───────────────────────────────────────────────────────
+function lsGet(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+// ── Load saved command history ────────────────────────────────────────────
+(function loadCmdHist() {
+  const saved = lsGet(LS_CMD, []);
+  saved.forEach(cmd => hist.push(cmd));
+})();
+
+// ── All commands ──────────────────────────────────────────────────────────
+const CMDS = [
+  {c:'/help',        d:'คำสั่งทั้งหมด'},
+  {c:'/chat ',       d:'คุยกับ AI'},
+  {c:'/models',      d:'Ollama models'},
+  {c:'/switch ',     d:'เปลี่ยน model'},
+  {c:'/pull ',       d:'ดาวน์โหลด model'},
+  {c:'/status',      d:'CPU/RAM/GPU'},
+  {c:'/ps',          d:'process list'},
+  {c:'/kill ',       d:'kill PID'},
+  {c:'/shell ',      d:'run shell command'},
+  {c:'/py ',         d:'run Python'},
+  {c:'/trace ',      d:'step trace Python'},
+  {c:'/profile ',    d:'cProfile Python'},
+  {c:'/ast ',        d:'AST analysis'},
+  {c:'/ls ',         d:'list directory'},
+  {c:'/file ',       d:'read file'},
+  {c:'/write ',      d:'write file: /write path content'},
+  {c:'/find ',       d:'search files'},
+  {c:'/git ',        d:'git: status/log/diff/add/commit/push/pull'},
+  {c:'/mem',         d:'short-term memory'},
+  {c:'/memlong',     d:'long-term memory'},
+  {c:'/memset ',     d:'save: /memset key value'},
+  {c:'/memclear ',   d:'clear memory'},
+  {c:'/tasks',       d:'task queue'},
+  {c:'/task ',       d:'add task'},
+  {c:'/audit',       d:'audit log'},
+  {c:'/vol ',        d:'volume 0-100'},
+  {c:'/volup',       d:'volume +10'},
+  {c:'/voldown',     d:'volume -10'},
+  {c:'/mute',        d:'mute toggle'},
+  {c:'/play ',       d:'play music'},
+  {c:'/pause',       d:'pause music'},
+  {c:'/next',        d:'next track'},
+  {c:'/prev',        d:'prev track'},
+  {c:'/open ',       d:'open app by name'},
+  {c:'/web ',        d:'open URL'},
+  {c:'/apps',        d:'app shortcuts list'},
+  {c:'/addapp ',     d:'add app: /addapp name url'},
+  {c:'/delapp ',     d:'remove app by name'},
+  {c:'/search ',     d:'web search'},
+  {c:'/peers',       d:'mesh nodes'},
+  {c:'/scan',        d:'scan LAN for nodes'},
+  {c:'/send ',       d:'send to node: /send IP:PORT msg'},
+  {c:'/broadcast ',  d:'send to all nodes'},
+  {c:'/inbox',       d:'mesh messages'},
+  {c:'/dns',         d:'local DNS (.aria)'},
+  {c:'/dnsadd ',     d:'add DNS: /dnsadd host ip'},
+  {c:'/intranet',    d:'intranet status'},
+  {c:'/ip',          d:'IP / node info'},
+  {c:'/warmode',     d:'toggle war mode'},
+  {c:'/joke',        d:'get a joke'},
+  {c:'/clear',       d:'clear screen'},
+  {c:'/history',      d:'show saved chat history'},
+  {c:'/exporthistory',d:'download history as .txt'},
+  {c:'/clearhistory', d:'delete all saved history'},
+  {c:'/memory',       d:'AI memory stats/search/facts'},
+  {c:'/memory search ',d:'search memory'},
+  {c:'/memory fact ', d:'/memory fact key: value'},
+  {c:'/tasks',        d:'scheduled tasks list'},
+  {c:'/tasks add ',   d:'add task: Name|shell:cmd|seconds'},
+  {c:'/tasks run ',   d:'run task now'},
+  // Agent
+  {c:'/agent ',      d:'AI auto-pilot: /agent <task description>'},
+  // RAG
+  {c:'/rag ',        d:'RAG: /rag ask <question> | list | stats'},
+  {c:'/rag ask ',    d:'ask question from documents'},
+  {c:'/rag upload ', d:'/rag upload <file_path>'},
+  // E2E Chat
+  {c:'/echat setup ',d:'setup encrypted chat room'},
+  {c:'/echat join ', d:'join encrypted room'},
+  {c:'/echat send ', d:'send encrypted message'},
+  {c:'/echat read',  d:'read decrypted messages'},
+  // File upload & AI analysis
+  {c:'/upload',       d:'upload file → AI reads it'},
+  {c:'/uploads',      d:'list uploaded files'},
+  {c:'/analyze ',     d:'AI analyze file: /analyze path [question]'},
+  // Weather
+  {c:'/weather ',     d:'weather forecast: /weather Bangkok'},
+  {c:'/weather',      d:'weather current city'},
+  // Hotspot
+  {c:'/hotspot',      d:'internet sharing status'},
+  {c:'/hotspot on',   d:'create WiFi hotspot'},
+  {c:'/hotspot off',  d:'stop hotspot'},
+  // Alerts
+  {c:'/alert ',       d:'send alert: /alert title | message'},
+  {c:'/alertconfig',  d:'show alert channels config'},
+  {c:'/ntfy ',        d:'quick ntfy push notification'},
+];
+
+// ── Output helpers ────────────────────────────────────────────────────────
+const out = document.getElementById('output');
+function println(text, type='sys', pfx='') {
+  const d = document.createElement('div');
+  d.className = 'line line-' + type;
+  const ts = new Date().toTimeString().slice(0,8);
+  d.innerHTML = `<span class="pfx">${pfx || (type==='user'?'❯':type==='ai'?'AI':type==='ok'?'OK':type==='err'?'ERR':type==='warn'?'!':ts)}</span><span class="txt">${esc(text)}</span>`;
+  out.appendChild(d);
+  out.scrollTop = out.scrollHeight;
+  // Autosave to localStorage
+  saveChatLine(text, type, pfx);
+  return d;
+}
+function saveChatLine(text, type, pfx='') {
+  const logs = lsGet(LS_CHAT, []);
+  logs.push({ text, type, pfx, ts: Date.now() });
+  if (logs.length > LS_MAX_CHAT) logs.splice(0, logs.length - LS_MAX_CHAT);
+  lsSet(LS_CHAT, logs);
+}
+function printRaw(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  out.appendChild(d);
+  out.scrollTop = out.scrollHeight;
+}
+function printTable(headers, rows) {
+  let h = `<table class="tbl"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>`;
+  h += rows.map(r=>`<tr>${r.map(c=>`<td>${esc(String(c??''))}</td>`).join('')}</tr>`).join('');
+  h += '</tbody></table>';
+  printRaw(h);
+}
+function printCode(text) {
+  const d = document.createElement('div');
+  d.className = 'line line-code';
+  d.innerHTML = `<span class="pfx">  </span><span class="txt code">${esc(text)}</span>`;
+  out.appendChild(d);
+  out.scrollTop = out.scrollHeight;
+}
+
+// ── Chat history restore ─────────────────────────────────────────────────
+function restoreChatHistory() {
+  const logs = lsGet(LS_CHAT, []);
+  if (!logs.length) return;
+  // Show last session separator
+  const sep = document.createElement('div');
+  sep.style.cssText = 'padding:6px 16px;font-size:10px;color:#30363d;display:flex;align-items:center;gap:8px';
+  sep.innerHTML = '<span style="flex:1;height:1px;background:#21262d"></span>Previous session<span style="flex:1;height:1px;background:#21262d"></span>';
+  out.appendChild(sep);
+  // Restore last 100 lines
+  logs.slice(-100).forEach(log => {
+    const d = document.createElement('div');
+    d.className = 'line line-' + log.type;
+    const ts = new Date(log.ts).toTimeString().slice(0,8);
+    const p = log.pfx || (log.type==='user'?'❯':log.type==='ai'?'AI':log.type==='ok'?'OK':log.type==='err'?'ERR':log.type==='warn'?'!':ts);
+    d.innerHTML = `<span class="pfx">${p}</span><span class="txt">${esc(log.text)}</span>`;
+    out.appendChild(d);
+  });
+  const sep2 = document.createElement('div');
+  sep2.style.cssText = 'padding:6px 16px;font-size:10px;color:#30363d;display:flex;align-items:center;gap:8px';
+  sep2.innerHTML = '<span style="flex:1;height:1px;background:#21262d"></span>New session — '+new Date().toLocaleString()+'<span style="flex:1;height:1px;background:#21262d"></span>';
+  out.appendChild(sep2);
+  out.scrollTop = out.scrollHeight;
+}
+function clearHistory() {
+  lsSet(LS_CHAT, []);
+  lsSet(LS_CMD, []);
+  hist.length = 0;
+  renderCmdHist();
+  out.innerHTML = '';
+  println('Chat & command history cleared', 'ok');
+}
+function exportHistory() {
+  const logs = lsGet(LS_CHAT, []);
+  const lines = logs.map(l => {
+    const t = new Date(l.ts).toLocaleString();
+    const role = l.type==='user'?'[USER]':l.type==='ai'?'[AI  ]':'[SYS ]';
+    return `${t}  ${role}  ${l.text}`;
+  }).join('\n');
+  const blob = new Blob([lines], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'aria-chat-'+new Date().toISOString().slice(0,10)+'.txt';
+  a.click();
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+function boot() {
+  [
+    '  █████╗ ██████╗ ██╗ █████╗',
+    ' ██╔══██╗██╔══██╗██║██╔══██╗',
+    ' ███████║██████╔╝██║███████║',
+    ' ██╔══██║██╔══██╗██║██╔══██║',
+    ' ██║  ██║██║  ██║██║██║  ██║',
+    '',
+    ' v3.0  —  Advanced Reasoning & Intelligent Assistant',
+    ' ─────────────────────────────────────────────────',
+    ' Type /help for all commands',
+    ' Type anything to chat with AI directly',
+  ].forEach((l, i) => setTimeout(() => {
+    const d = document.createElement('div');
+    d.style.cssText = 'color:#58a6ff;font-size:12px;line-height:1.4;padding:1px 16px';
+    d.textContent = l;
+    out.appendChild(d);
+    out.scrollTop = out.scrollHeight;
+  }, i * 35));
+}
+boot();
+
+// ── API ───────────────────────────────────────────────────────────────────
+async function api(method, url, body) {
+  try {
+    const o = { method, headers: {'Content-Type':'application/json'} };
+    if (body && method !== 'GET') o.body = JSON.stringify(body);
+    const r = await fetch(url, o);
+    return await r.json();
+  } catch(e) { return {error: e.message}; }
+}
+
+// ── Init polls ────────────────────────────────────────────────────────────
+async function initStatus() {
+  const r = await api('GET', '/api/status');
+  if (r.error) {
+    document.getElementById('rp-ol-badge').textContent = 'Ollama offline';
+    return;
+  }
+  updateRightPanel(r);
+}
+async function initModels() {
+  const r = await api('GET', '/api/models');
+  if (r.error) return;
+  currentModel = r.current || '';
+  const sel = document.getElementById('model-sel');
+  const rpSel = document.getElementById('rp-model-sel');
+  const models = r.models || [];
+  const opts = models.map(m=>`<option value="${esc(m.name)}"${m.name===r.current?' selected':''}>${esc(m.name)}</option>`).join('');
+  sel.innerHTML = opts;
+  rpSel.innerHTML = opts;
+  document.getElementById('rp-model-name').textContent = r.current || '--';
+  document.getElementById('rp-ol-badge').textContent = '✓ Online';
+  document.getElementById('rp-ol-badge').style.color = '#3fb950';
+  document.getElementById('rp-ol-dot').style.cssText = 'width:7px;height:7px;border-radius:50%;background:#3fb950;box-shadow:0 0 5px #3fb950;flex-shrink:0;animation:pulse-dot 2s ease-in-out infinite';
+  document.getElementById('model-list').innerHTML = models.map(m=>`
+    <div class="model-item${m.name===r.current?' current':''}" onclick="switchModel('${esc(m.name)}')">
+      <div class="model-dot"></div>${esc(m.name)}
+    </div>`).join('');
+  document.getElementById('ol-dot').style.background = '#3fb950';
+  document.getElementById('ol-txt').textContent = 'Ollama ✓';
+}
+async function pollStatus() {
+  const r = await api('GET', '/api/status');
+  if (!r.error) updateRightPanel(r);
+  const m = await api('GET', '/api/mesh/nodes');
+  if (!m.error) updatePeers(m.nodes || []);
+  const msgs = await api('GET', '/api/mesh/messages?limit=8');
+  if (!msgs.error) updateInbox(msgs.messages || []);
+}
+
+function updateRightPanel(r) {
+  const cpu = r.cpu?.percent || 0;
+  const ram = r.memory?.percent || 0;
+  const disk = r.disk?.percent || 0;
+  const up = r.uptime || 0;
+
+  // CPU
+  document.getElementById('rp-cpu').textContent = cpu.toFixed(1) + '%';
+  document.getElementById('rp-cpu').className = 'm-value ' + (cpu>80?'err':cpu>60?'warn':'ok');
+  const cb = document.getElementById('rp-cpu-bar');
+  cb.style.width = cpu + '%';
+  cb.style.background = cpu>80?'#f85149':cpu>60?'#d29922':'#58a6ff';
+
+  // Per-core
+  const cores = r.cpu?.per_core || [];
+  if (cores.length) {
+    document.getElementById('rp-cores').innerHTML = cores.slice(0,8).map((c,i)=>`
+      <div class="core-cell">
+        <div class="core-id">C${i}</div>
+        <div class="core-pct" style="color:${c>80?'#f85149':c>60?'#d29922':'#3fb950'}">${Math.round(c)}%</div>
+      </div>`).join('');
+  }
+
+  // RAM
+  document.getElementById('rp-ram').textContent = fmtBytes(r.memory?.used) + ' / ' + fmtBytes(r.memory?.total);
+  document.getElementById('rp-ram').className = 'm-value ' + (ram>85?'err':ram>70?'warn':'');
+  const rb = document.getElementById('rp-ram-bar');
+  rb.style.width = ram + '%';
+  rb.style.background = ram>85?'#f85149':ram>70?'#d29922':'#d29922';
+
+  // Disk
+  document.getElementById('rp-disk').textContent = fmtBytes(r.disk?.used) + ' (' + disk.toFixed(0) + '%)';
+  document.getElementById('rp-disk-bar').style.width = disk + '%';
+  document.getElementById('rp-disk-bar').style.background = disk>90?'#f85149':disk>75?'#d29922':'#8b949e';
+
+  // GPU
+  if (r.gpu?.available) {
+    document.getElementById('rp-gpu-wrap').style.display = 'block';
+    document.getElementById('rp-gpu-name').textContent = r.gpu.name?.split(' ').slice(-2).join(' ') || 'GPU';
+    document.getElementById('rp-gpu-util').textContent = r.gpu.util + '%';
+    document.getElementById('rp-gpu-temp').textContent = r.gpu.temp + '°C';
+    document.getElementById('rp-gpu-temp').className = 'm-value ' + (r.gpu.temp>80?'err':r.gpu.temp>65?'warn':'ok');
+    document.getElementById('rp-gpu-bar').style.width = r.gpu.util + '%';
+  }
+
+  // Uptime
+  const d=Math.floor(up/86400), h=Math.floor(up%86400/3600), mm=Math.floor(up%3600/60);
+  document.getElementById('rp-uptime').textContent = (d?d+'d ':'')+h+'h '+mm+'m';
+
+  // IP
+  document.getElementById('rp-ip').textContent = r.local_ip || '--';
+  document.getElementById('s-ip').textContent = r.local_ip || '--';
+
+  // Mesh count
+  const pc = r.mesh_peers || 0;
+  document.getElementById('rp-peers-c').textContent = pc + ' peer' + (pc!==1?'s':'') + ' online';
+  document.getElementById('rp-peers-c').style.color = pc>0?'#3fb950':'#8b949e';
+  document.getElementById('peers-txt').textContent = pc + ' peers';
+  document.getElementById('sys-dot').style.background = '#3fb950';
+
+  // Left panel stats
+  document.getElementById('s-cpu').textContent = cpu.toFixed(1)+'%';
+  document.getElementById('s-ram').textContent = ram.toFixed(1)+'%';
+  document.getElementById('s-disk').textContent = disk.toFixed(1)+'%';
+  document.getElementById('b-cpu').style.cssText = `width:${cpu}%;background:${cpu>80?'#f85149':cpu>60?'#d29922':'#58a6ff'}`;
+  document.getElementById('b-ram').style.cssText = `width:${ram}%;background:${ram>85?'#f85149':'#d29922'}`;
+  currentModel = r.model || currentModel;
+
+  // Model name sync
+  if (r.model) {
+    document.getElementById('rp-model-name').textContent = r.model;
+    const sel = document.getElementById('rp-model-sel');
+    if ([...sel.options].some(o=>o.value===r.model)) sel.value = r.model;
+    document.getElementById('model-sel').value = r.model;
+  }
+}
+
+function updatePeers(nodes) {
+  const list = document.getElementById('rp-peer-list');
+  list.innerHTML = nodes.map(n => `
+    <div class="peer-item" onclick="${!n.is_self?`ins('/send ${n.ip}:${n.port} ')`:''}" title="${n.is_self?'This node':'Click to send message'}">
+      <div class="peer-dot" style="background:${n.is_self?'#58a6ff':'#3fb950'};box-shadow:0 0 4px ${n.is_self?'#58a6ff':'#3fb950'}"></div>
+      <div class="peer-info">
+        <div class="peer-name">${esc(n.name)}${n.is_self?' <span style="color:#58a6ff;font-size:9px">(you)</span>':''}</div>
+        <div class="peer-ip">${n.ip}:${n.port}</div>
+      </div>
+      ${!n.is_self?'<span class="peer-ping" onclick="event.stopPropagation();pingNode(this,\''+n.ip+'\','+n.port+')">ping</span>':''}
+    </div>`).join('');
+  // Also update left panel peer list
+  document.getElementById('peer-list').innerHTML = nodes.map(n => `
+    <div class="peer-item"><div class="peer-dot" style="background:${n.is_self?'#58a6ff':'#3fb950'}"></div>
+    <span class="peer-name">${esc(n.name)}${n.is_self?' (you)':''}</span><span class="peer-ip">${n.ip}</span></div>`).join('');
+}
+
+function updateInbox(messages) {
+  const box = document.getElementById('rp-inbox');
+  const cnt = document.getElementById('rp-inbox-c');
+  cnt.textContent = messages.length;
+  cnt.style.background = messages.length>0 ? '#d29922' : '#21262d';
+  cnt.style.color = messages.length>0 ? '#0d1117' : '#8b949e';
+  if (!messages.length) { box.innerHTML = '<div class="inbox-empty">No messages</div>'; return; }
+  box.innerHTML = messages.slice().reverse().map(m => `
+    <div class="inbox-msg">
+      <div class="inbox-from">${esc(m.from_name||m.from_node)}<span class="im-time">${new Date(m.ts*1000).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span></div>
+      <div class="inbox-body">${esc((m.content||'').slice(0,60))}</div>
+    </div>`).join('');
+}
+
+async function pingNode(btn, ip, port) {
+  btn.textContent = '...';
+  const t = Date.now();
+  try {
+    await fetch(`http://${ip}:${port}/api/mesh/info`, {signal: AbortSignal.timeout(3000)});
+    btn.textContent = (Date.now()-t) + 'ms';
+    btn.style.color = '#3fb950';
+  } catch {
+    btn.textContent = 'N/A';
+    btn.style.color = '#f85149';
+  }
+}
+
+function pushAlert(type, title, sub) {
+  const colors = {ok:'al-green', warn:'al-yellow', err:'al-red', info:'al-blue'};
+  const box = document.getElementById('rp-alerts');
+  const d = document.createElement('div'); d.className='alert-item';
+  const now = new Date().toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+  d.innerHTML=`<div class="al-dot ${colors[type]||'al-blue'}"></div>
+    <div class="al-body"><div class="al-t">${esc(title)}</div><div class="al-sub">${esc(sub)}</div><div class="al-time">${now}</div></div>
+    <span class="al-x" onclick="this.closest('.alert-item').remove()">×</span>`;
+  d.style.opacity='0';d.style.transform='translateX(10px)';d.style.transition='all .25s';
+  box.insertBefore(d, box.firstChild);
+  requestAnimationFrame(()=>{d.style.opacity='1';d.style.transform='translateX(0)';});
+}
+function fmtBytes(b) {
+  if(!b) return '0B';
+  if(b<1024) return b+'B';
+  if(b<1048576) return (b/1024).toFixed(1)+'KB';
+  if(b<1073741824) return (b/1048576).toFixed(1)+'MB';
+  return (b/1073741824).toFixed(2)+'GB';
+}
+function fmtUp(s) {
+  if(!s) return '--';
+  const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+  return (d?d+'d ':'')+(h?h+'h ':'')+m+'m';
+}
+
+// Start polling
+initStatus(); initModels();
+setInterval(pollStatus, 5000);
+restoreChatHistory();
+renderCmdHist();
+
+// ── Model switch ──────────────────────────────────────────────────────────
+async function switchModel(name) {
+  if (!name || name === currentModel) return;
+  await api('POST', '/api/models/switch', {name});
+  currentModel = name;
+  document.getElementById('model-sel').value = name;
+  println(`Model → ${name}`, 'ok');
+  initModels();
+}
+
+// ── Command dispatch ──────────────────────────────────────────────────────
+async function doSend() {
+  const inp = document.getElementById('cmd');
+  const v = inp.value.trim();
+  if (!v || streaming) return;
+  inp.value = ''; hintHide();
+  println(v, 'user', '❯');
+  hist.unshift(v); histIdx = -1;
+  updateHist(v);
+  if (v.startsWith('/')) {
+    const pts = v.slice(1).split(' ');
+    await run(pts[0].toLowerCase(), pts.slice(1).join(' '));
+  } else {
+    await chatStream(v);
+  }
+}
+
+async function run(cmd, args) {
+  switch(cmd) {
+
+  case 'help':
+    println('═══ ARIA Commands ══════════════════════════', 'sys');
+    printTable(['Command','Description'], CMDS.map(c=>[c.c.trim(), c.d]));
+    println('tip: type directly (no /) to chat with AI', 'sys');
+  println('new: /upload 📎  /weather  /hotspot  /alert  /history', 'sys');
+    break;
+
+  case 'clear': out.innerHTML = ''; boot(); break;
+
+  case 'chat': await chatStream(args || 'สวัสดี'); break;
+
+  // ── Models ──
+  case 'models': {
+    const r = await api('GET', '/api/models');
+    if (r.error) { println('Ollama offline: '+r.error, 'err'); break; }
+    printTable(['Model','Size','Modified'], (r.models||[]).map(m=>[
+      (m.name===r.current?'✓ ':' ')+m.name,
+      fmtBytes(m.size),
+      m.modified_at?.slice(0,10)||'--'
+    ]));
+    println('Current: '+r.current, 'ok');
+    break;
+  }
+  case 'switch': {
+    if (!args) { println('Usage: /switch model-name', 'warn'); break; }
+    await api('POST', '/api/models/switch', {name:args});
+    currentModel = args;
+    document.getElementById('model-sel').value = args;
+    document.getElementById('rp-model-sel').value = args;
+    document.getElementById('rp-model-name').textContent = args;
+    println(`Model → ${args}`, 'ok');
+    pushAlert('info', 'Model switched', args);
+    initModels();
+    break;
+  }
+  case 'pull': {
+    if (!args) { println('Usage: /pull model:tag', 'warn'); break; }
+    println('Pulling '+args+'...', 'sys');
+    const line = out.lastElementChild;
+    try {
+      const res = await fetch('/api/models/pull', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:args})});
+      const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+      while(true) {
+        const{done,value} = await reader.read(); if(done) break;
+        buf += dec.decode(value,{stream:true});
+        let idx;
+        while((idx=buf.indexOf('\n\n'))>=0) {
+          const raw=buf.slice(0,idx).replace('data: ',''); buf=buf.slice(idx+2);
+          try{ const d=JSON.parse(raw); if(d.status){const p=d.total?` ${Math.round(d.completed/d.total*100)}%`:''; line.querySelector('.txt').textContent=`Pulling ${args}: ${d.status}${p}`;} if(d.done)println('✓ '+args+' ready','ok'); }catch{}
+        }
+      }
+    } catch(e){println('Pull error: '+e.message,'err');}
+    break;
+  }
+
+  // ── System ──
+  case 'status': {
+    const r = await api('GET', '/api/status');
+    if (r.error) { println(r.error, 'err'); break; }
+    printTable(['Metric','Value'], [
+      ['CPU',    r.cpu?.percent?.toFixed(1)+'% ('+r.cpu?.count+' cores)'],
+      ['RAM',    fmtBytes(r.memory?.used)+' / '+fmtBytes(r.memory?.total)+' ('+r.memory?.percent?.toFixed(1)+'%)'],
+      ['Disk',   fmtBytes(r.disk?.used)+' / '+fmtBytes(r.disk?.total)+' ('+r.disk?.percent?.toFixed(1)+'%)'],
+      ['GPU',    r.gpu?.available ? r.gpu.name+' '+r.gpu.util+'%' : 'N/A'],
+      ['Ollama', r.ollama ? '✓ Online' : '✗ Offline'],
+      ['Model',  r.model||'--'],
+      ['IP',     r.local_ip||'--'],
+      ['Peers',  r.mesh_peers||0],
+      ['Uptime', fmtUp(r.uptime)],
+    ]);
+    break;
+  }
+  case 'ps': {
+    const r = await api('GET', '/api/processes');
+    printTable(['PID','Name','CPU%','RAM%','Status'],
+      (r.processes||[]).slice(0,15).map(p=>[p.pid, p.name, (p.cpu_percent||0).toFixed(1), (p.memory_percent||0).toFixed(2), p.status]));
+    break;
+  }
+  case 'kill': {
+    if (!args) { println('Usage: /kill PID', 'warn'); break; }
+    const r = await api('POST', '/api/processes/'+parseInt(args)+'/kill');
+    println(r.ok ? 'Killed PID '+args : r.error, r.ok?'ok':'err');
+    break;
+  }
+  case 'shell': case 'sh': {
+    if (!args) { println('Usage: /shell command', 'warn'); break; }
+    const r = await api('POST', '/api/shell', {cmd:args});
+    if (r.stdout) r.stdout.trimEnd().split('\n').forEach(l=>l&&printCode(l));
+    if (r.stderr) r.stderr.trimEnd().split('\n').forEach(l=>l&&println(l,'warn'));
+    if (r.code !== 0) println('Exit: '+r.code, 'err');
+    break;
+  }
+  case 'py': case 'python': {
+    if (!args) { println('Usage: /py code', 'warn'); break; }
+    const r = await api('POST', '/api/python', {code:args});
+    if (r.stdout) r.stdout.trimEnd().split('\n').forEach(l=>printCode(l));
+    if (r.error)  println(r.error, 'err');
+    if (r.locals && Object.keys(r.locals).length) printTable(['Var','Value'], Object.entries(r.locals).slice(0,10));
+    break;
+  }
+  case 'trace': {
+    if (!args) { println('Usage: /trace code', 'warn'); break; }
+    const r = await api('POST', '/api/trace', {code:args});
+    printTable(['#','Event','Func','Line','Locals'],
+      (r.steps||[]).slice(0,25).map((s,i)=>[i+1,s.event,s.func||'',s.line||'',JSON.stringify(s.locals||{}).slice(0,60)]));
+    break;
+  }
+  case 'profile': {
+    if (!args) { println('Usage: /profile code', 'warn'); break; }
+    const r = await api('POST', '/api/python/profile', {code:args});
+    r.profile?.split('\n').forEach(l=>l.trim()&&printCode(l));
+    if (r.error) println(r.error, 'err');
+    break;
+  }
+  case 'ast': {
+    if (!args) { println('Usage: /ast code', 'warn'); break; }
+    const r = await api('POST', '/api/ast', {code:args});
+    if (r.error) { println(r.error,'err'); break; }
+    const fns=(r.nodes||[]).filter(n=>n.type==='FunctionDef');
+    const cls=(r.nodes||[]).filter(n=>n.type==='ClassDef');
+    if(fns.length) printTable(['Function','Line','Args'],fns.map(f=>[f.name,f.line,(f.args||[]).join(', ')]));
+    if(cls.length) printTable(['Class','Line'],cls.map(c=>[c.name,c.line]));
+    break;
+  }
+
+  // ── Files ──
+  case 'ls': {
+    const r = await api('GET', '/api/fs/list?path='+encodeURIComponent(args||'.'));
+    if (r.error) { println(r.error,'err'); break; }
+    println(r.path, 'sys');
+    printTable(['Type','Name','Size'], r.items.map(i=>[i.type==='dir'?'DIR':'FILE', i.name, i.type==='dir'?'':fmtBytes(i.size)]));
+    break;
+  }
+  case 'file': case 'cat': {
+    if (!args) { println('Usage: /file path','warn'); break; }
+    const r = await api('GET', '/api/fs/read?path='+encodeURIComponent(args));
+    if (r.error) { println(r.error,'err'); break; }
+    r.content.slice(0,3000).split('\n').forEach(l=>printCode(l));
+    break;
+  }
+  case 'write': {
+    const sp=args.indexOf(' '); if(sp<1){println('Usage: /write path content','warn');break;}
+    const r = await api('POST','/api/fs/write',{path:args.slice(0,sp),content:args.slice(sp+1)});
+    println(r.ok?'Written: '+args.slice(0,sp):r.error, r.ok?'ok':'err');
+    break;
+  }
+  case 'find': {
+    if (!args) { println('Usage: /find query','warn'); break; }
+    const r = await api('GET','/api/fs/search?q='+encodeURIComponent(args));
+    (r.results||[]).slice(0,20).forEach(x=>println(x.path,'sys'));
+    println((r.results||[]).length+' results','sys');
+    break;
+  }
+  case 'git': {
+    const r = await api('POST','/api/git',{action:args||'status'});
+    if(r.stdout) r.stdout.trimEnd().split('\n').forEach(l=>l&&printCode(l));
+    if(r.stderr) r.stderr.trimEnd().split('\n').forEach(l=>l&&println(l,'warn'));
+    break;
+  }
+
+  // ── Memory ──
+  case 'mem': case 'memory': {
+    const r = await api('GET','/api/memory/short');
+    printTable(['Role','Content','Time'], (r.messages||[]).slice(0,10).map(m=>[m.role, m.content?.slice(0,70), new Date(m.ts*1000).toLocaleTimeString()]));
+    break;
+  }
+  case 'memlong': {
+    const r = await api('GET','/api/memory/long');
+    printTable(['Key','Value'], (r.memories||[]).map(m=>[m.key, m.value?.slice(0,70)]));
+    break;
+  }
+  case 'memset': {
+    const sp=args.indexOf(' '); if(sp<1){println('Usage: /memset key value','warn');break;}
+    await api('POST','/api/memory/long',{key:args.slice(0,sp),value:args.slice(sp+1)});
+    println('Saved: '+args.slice(0,sp),'ok');
+    break;
+  }
+  case 'memclear': {
+    await api('POST','/api/memory/clear',{which:args||'short'});
+    println('Cleared: '+(args||'short'),'ok');
+    break;
+  }
+
+  // ── Tasks ──
+  case 'tasks': {
+    const r = await api('GET','/api/tasks');
+    printTable(['ID','Status','Description','Result'],
+      (r.tasks||[]).slice(0,10).map(t=>[t.id,t.status,t.desc?.slice(0,50),t.result?.slice(0,30)||'']));
+    break;
+  }
+  case 'task': {
+    if (!args){println('Usage: /task description','warn');break;}
+    const r = await api('POST','/api/tasks',{desc:args});
+    println('Task added ['+r.id+']: '+args,'ok');
+    break;
+  }
+  case 'audit': {
+    const r = await api('GET','/api/audit');
+    printTable(['Action','Detail','IP','Time'],
+      (r.logs||[]).slice(0,15).map(l=>[l.action,l.detail?.slice(0,40),l.ip,new Date(l.ts*1000).toLocaleTimeString()]));
+    break;
+  }
+
+  // ── Volume ──
+  case 'vol': {
+    const n=parseInt(args); if(isNaN(n)){println('Usage: /vol 0-100','warn');break;}
+    println('Volume → '+n+'%','ok');
+    break;
+  }
+  case 'volup':  println('Volume ↑ (backend command)','ok'); break;
+  case 'voldown':println('Volume ↓ (backend command)','ok'); break;
+  case 'mute':   println('Mute toggle','ok'); break;
+
+  // ── Music ──
+  case 'play':  {
+    const r = await api('POST','/api/shell',{cmd:'osascript -e \'tell app "Music" to play\' 2>/dev/null || echo "play command sent"'});
+    println(args?'▶ Playing: '+args:'▶ Play command sent','ok'); break;
+  }
+  case 'pause': println('⏸ Pause','ok'); break;
+  case 'next':  println('⏭ Next track','ok'); break;
+  case 'prev':  println('⏮ Prev track','ok'); break;
+
+  // ── Apps ──
+  case 'open': {
+    if (!args){println('Usage: /open appname','warn');break;}
+    const r=await api('POST','/api/shell',{cmd:`open -a "${args}" 2>/dev/null || start "" "${args}" 2>/dev/null || xdg-open "${args}" 2>/dev/null`});
+    println(r.code===0?'Opened: '+args:r.stderr||'Sent open command','ok');
+    break;
+  }
+  case 'web': {
+    if (!args){println('Usage: /web url','warn');break;}
+    const url=args.startsWith('http')?args:'https://'+args;
+    window.open(url,'_blank');
+    println('Opened: '+url,'ok');
+    break;
+  }
+  case 'apps': println('Use /open <appname> to launch apps, /web <url> to open websites','sys'); break;
+  case 'addapp': println('App shortcuts managed in /command UI','sys'); break;
+  case 'delapp': println('App shortcuts managed in /command UI','sys'); break;
+
+  // ── Search ──
+  case 'search': {
+    if (!args){println('Usage: /search query','warn');break;}
+    const r=await api('GET','/api/websearch?q='+encodeURIComponent(args));
+    if(r.error){println(r.error,'err');break;}
+    printTable(['#','Title','URL'], (r.results||[]).slice(0,8).map((x,i)=>[i+1,x.title?.slice(0,55),x.href?.slice(0,60)]));
+    break;
+  }
+
+  // ── Mesh ──
+  case 'peers': {
+    const r=await api('GET','/api/mesh/nodes');
+    printTable(['Node ID','Name','IP','Port','Status'],
+      (r.nodes||[]).map(n=>[n.node_id?.slice(0,8),n.name,n.ip,n.port,n.is_self?'YOU':'online']));
+    println((r.nodes||[]).length+' node(s)','ok');
+    break;
+  }
+  case 'scan': {
+    await api('POST','/api/mesh/scan');
+    println('Broadcast sent — scanning LAN...','ok');
+    setTimeout(()=>run('peers',''),2500);
+    break;
+  }
+  case 'send': {
+    const sp=args.indexOf(' '); if(sp<1){println('Usage: /send IP:PORT message','warn');break;}
+    const [ip,port]=args.slice(0,sp).split(':');
+    const r=await api('POST','/api/mesh/send',{ip,port:parseInt(port||5000),content:args.slice(sp+1)});
+    println(r.ok?'Sent to '+ip:r.error, r.ok?'ok':'err');
+    break;
+  }
+  case 'broadcast': {
+    if (!args){println('Usage: /broadcast message','warn');break;}
+    const r=await api('POST','/api/mesh/broadcast',{content:args});
+    println('Broadcast → '+r.sent_to+' peers','ok');
+    break;
+  }
+  case 'inbox': {
+    const r=await api('GET','/api/mesh/messages?limit=15');
+    printTable(['From','Message','Time'],
+      (r.messages||[]).reverse().map(m=>[m.from_name||m.from_node,m.content?.slice(0,60),new Date(m.ts*1000).toLocaleTimeString()]));
+    break;
+  }
+  case 'warmode': {
+    println('=== WAR MODE / OFFLINE NETWORK ===','sys');
+    println('Mesh UDP:    47777  (node discovery)','ok');
+    println('Intranet:    47778  (UDP multicast)','ok');
+    println('File Share:  47780  (HTTP)','ok');
+    println('Local DNS:   5354   (.aria domains)','ok');
+    const r=await api('GET','/api/intranet/connectivity');
+    println('External Internet: '+(r.online?'ONLINE':'OFFLINE (war mode ready)'),'ok');
+    pushAlert(r.online?'info':'err', '⚔ War Mode', r.online?'External online':'Offline — LAN only');
+    break;
+  }
+
+  // ── Intranet ──
+  case 'dns': {
+    const r=await api('GET','/api/intranet/dns');
+    printTable(['Hostname','IP Address'], Object.entries(r.dns||{}));
+    break;
+  }
+  case 'dnsadd': {
+    const sp=args.indexOf(' '); if(sp<1){println('Usage: /dnsadd hostname ip','warn');break;}
+    const r=await api('POST','/api/intranet/dns/add',{hostname:args.slice(0,sp),ip:args.slice(sp+1)});
+    println(r.ok?'DNS added: '+args.slice(0,sp):r.error, r.ok?'ok':'err');
+    break;
+  }
+  case 'intranet': {
+    const [rd,rp,rc]=await Promise.all([api('GET','/api/intranet/dns'),api('GET','/api/mesh/nodes'),api('GET','/api/intranet/connectivity')]);
+    printTable(['Item','Value'],[
+      ['DNS entries', Object.keys(rd.dns||{}).length],
+      ['Mesh nodes',  (rp.nodes||[]).length],
+      ['File share',  ':47780'],
+      ['DNS port',    'UDP 5354'],
+      ['External',    rc.online?'Online':'Offline'],
+    ]);
+    break;
+  }
+  case 'ip': {
+    const r=await api('GET','/api/status');
+    println('IP:   '+(r.local_ip||'--'),'ok');
+    println('Node: '+(r.node_name||'--'),'ok');
+    break;
+  }
+
+  case 'joke': {
+    const r=await api('GET','/api/joke');
+    println(r.joke||r.error||'...','ai');
+    break;
+  }
+
+  case 'history': {
+    const logs = lsGet(LS_CHAT, []);
+    if (!logs.length) { println('No history saved', 'sys'); break; }
+    const days = {};
+    logs.forEach(l => {
+      const d = new Date(l.ts).toLocaleDateString();
+      days[d] = (days[d]||0)+1;
+    });
+    const summary = Object.entries(days).slice(-7).map(([d,c])=>`  ${d}  ${c} lines`).join('\n');
+    println(`Saved history: ${logs.length} lines total\n${summary}\n\n/exporthistory to download · /clearhistory to delete`, 'sys');
+    break;
+  }
+  case 'exporthistory': {
+    exportHistory();
+    println('Exported chat history as .txt file', 'ok');
+    break;
+  }
+  case 'clearhistory': {
+    clearHistory();
+    break;
+  }
+
+  // ── AI AGENT ──────────────────────────────────────────────────────────
+  case 'agent': case 'run': {
+    if(!args){ println('Usage: /agent <task>\nExample: /agent check BTC price and send alert if below $50k','warn'); break; }
+    println(`🤖 Agent starting: "${args}"`, 'sys');
+    println('Planning...', 'sys');
+    streaming = true;
+    const agentLine = document.createElement('div');
+    agentLine.className = 'line line-ai';
+    agentLine.innerHTML = '<span class="pfx">🤖</span><span class="txt" id="agent-out"></span>';
+    out.appendChild(agentLine); out.scrollTop = out.scrollHeight;
+    const aspan = agentLine.querySelector('#agent-out');
+    try {
+      const res = await fetch('/api/agent/run', {method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({task:args, model:currentModel, max_steps:6})});
+      const reader = res.body.getReader(); const dec = new TextDecoder(); let buf='';
+      while(true){
+        const{done,value}=await reader.read(); if(done) break;
+        buf+=dec.decode(value,{stream:true});
+        let idx;
+        while((idx=buf.indexOf('\n\n'))>=0){
+          const raw=buf.slice(0,idx).replace('data: ',''); buf=buf.slice(idx+2);
+          try{
+            const ev=JSON.parse(raw);
+            if(ev.done) break;
+            if(ev.type==='thought')     aspan.textContent+=`\n💭 ${ev.thought}\n🔧 ${ev.tool}(${JSON.stringify(ev.params||{})})`;
+            else if(ev.type==='result') aspan.textContent+=`\n→ ${ev.result}`;
+            else if(ev.type==='answer') aspan.textContent+=`\n\n✅ ${ev.answer}`;
+            else if(ev.type==='error')  aspan.textContent+=`\n❌ ${ev.msg}`;
+            out.scrollTop=out.scrollHeight;
+          }catch{}
+        }
+      }
+    } catch(e){ println('Agent error: '+e.message, 'err'); }
+    streaming=false;
+    break;
+  }
+
+  // ── RAG ────────────────────────────────────────────────────────────────
+  case 'rag': {
+    const[sub,...rargs]=args.split(' ');const rarg=rargs.join(' ');
+    if(!sub||sub==='stats'){ const r=await api('GET','/api/rag/stats'); println(`RAG: ${r.documents||0} docs, ${r.chunks||0} chunks, ${r.db_kb||0}KB`,'sys'); break; }
+    if(sub==='list'){ const docs=await api('GET','/api/rag/docs'); if(!docs.length){println('No documents indexed. Upload with /rag upload <path>','sys');break;} printTable(['ID','Name','Chunks','Added'],docs.map(d=>[d.id,d.name,d.chunks,new Date(d.added*1000).toLocaleDateString()])); break; }
+    if(sub==='upload'){
+      if(!rarg){println('Usage: /rag upload <file_path>  OR use 📎 button','warn');break;}
+      println('Reading: '+rarg,'sys');
+      const r=await api('POST','/api/rag/upload',{text:rarg,name:rarg});
+      if(r.error){println('Error: '+r.error,'err');}else{println(`✓ Indexed: "${r.name}" — ${r.chunks} chunks total`,'ok');}
+      break;
+    }
+    if(sub==='ask'){
+      if(!rarg){println('Usage: /rag ask <your question>','warn');break;}
+      println('🔍 Searching documents...','sys');
+      streaming=true;
+      const ragLine=document.createElement('div');ragLine.className='line line-ai';
+      ragLine.innerHTML='<span class="pfx">📄</span><span class="txt" id="rag-out"></span><span class="cursor"></span>';
+      out.appendChild(ragLine);out.scrollTop=out.scrollHeight;
+      const rspan=ragLine.querySelector('#rag-out'),rcur=ragLine.querySelector('.cursor');
+      let full='';
+      try{
+        const res=await fetch('/api/rag/ask/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:rarg,model:currentModel})});
+        const reader=res.body.getReader();const dec=new TextDecoder();let buf='';
+        while(true){const{done,value}=await reader.read();if(done)break;
+          buf+=dec.decode(value,{stream:true});let idx;
+          while((idx=buf.indexOf('\n\n'))>=0){const raw=buf.slice(0,idx).replace('data: ','');buf=buf.slice(idx+2);
+            try{const ev=JSON.parse(raw);if(ev.done)break;
+              if(ev.type==='sources')rspan.textContent=`Sources: ${ev.sources.join(', ')}\n`;
+              else if(ev.type==='token'){full+=ev.content;rspan.textContent+=ev.content;out.scrollTop=out.scrollHeight;}
+            }catch{}}}
+      }catch(e){println('RAG error: '+e.message,'err');}
+      rcur.remove();streaming=false;
+      if(full)saveChatLine(full,'ai','📄');
+      break;
+    }
+    if(sub==='delete'){
+      const r=await fetch(`/api/rag/docs/${rarg}`,{method:'DELETE'}).then(x=>x.json());
+      println(r.ok?`Deleted: ${rarg}`:'Error deleting','ok');break;
+    }
+    println('RAG commands:\n  /rag stats\n  /rag list\n  /rag upload <path>\n  /rag ask <question>\n  /rag delete <doc_id>','sys');
+    break;
+  }
+
+  // ── E2E ENCRYPTED CHAT ────────────────────────────────────────────────
+  case 'echat': {
+    const[esub,...eargs]=args.split(' ');const earg=eargs.join(' ');
+    if(!esub||esub==='status'){ const r=await api('GET','/api/echat/rooms'); println('E2E Rooms: '+JSON.stringify(r),'sys'); break; }
+    if(esub==='setup'){
+      const pp=earg||null;
+      const r=await api('POST','/api/echat/setup',{passphrase:pp,room:'aria-secure'});
+      if(r.error){println('Error: '+r.error,'err');break;}
+      println(`✓ E2E Chat Setup\nRoom: aria-secure\nFingerprint: ${r.fingerprint}\nKey: ${r.key.slice(0,20)}...\nLib: ${r.library}\n\nShare fingerprint with peers to verify same key!\nQR: ${r.qr_text}`,'ok');
+      break;
+    }
+    if(esub==='join'){
+      const[key,room]=earg.split(' ');
+      const r=await api('POST','/api/echat/join',{key,room:room||'aria-secure'});
+      println(r.ok?`✓ Joined room — Fingerprint: ${r.fingerprint}`:'Error: '+r.error,'ok');break;
+    }
+    if(esub==='send'){
+      if(!earg){println('Usage: /echat send <message>','warn');break;}
+      const r=await api('POST','/api/echat/send',{room:'aria-secure',content:earg,sender:document.getElementById('nid')?.textContent||'me'});
+      println(r.error?'Error: '+r.error:'✓ Encrypted message sent  fp:'+r.fingerprint,r.error?'err':'ok');break;
+    }
+    if(esub==='read'){
+      const msgs=await api('GET','/api/echat/messages?room=aria-secure&limit=20');
+      if(msgs.error){println('Error: '+msgs.error,'err');break;}
+      if(!msgs.length){println('No messages (send /echat setup first)','sys');break;}
+      msgs.forEach(m=>{
+        const t=new Date((m.ts||0)*1000).toLocaleTimeString();
+        println(`[${t}] ${m.sender}: ${m.content}`,'sys');
+      });
+      break;
+    }
+    println('E2E Encrypted Chat:\n  /echat setup [passphrase]  — create room (share fingerprint w/ peers)\n  /echat join <key> [room]   — join room with shared key\n  /echat send <message>      — send encrypted message\n  /echat read                — read decrypted messages\n  /echat status              — show active rooms','sys');
+    break;
+  }
+
+  case 'memory': case 'mem': {
+    await handleMemoryCmd(args);
+    break;
+  }
+  case 'tasks': case 'task': {
+    await handleTasksCmd(args);
+    break;
+  }
+
+
+  // ── File upload & AI analysis ───────────────────────────────────────────
+  case 'upload': {
+    // Trigger hidden file input
+    const fi = document.createElement('input');
+    fi.type='file'; fi.accept='*/*'; fi.style.display='none';
+    document.body.appendChild(fi);
+    fi.onchange = async () => {
+      const file = fi.files[0]; if(!file) return;
+      println(`Uploading: ${file.name} (${(file.size/1024).toFixed(1)} KB)...`, 'sys');
+      const fd = new FormData(); fd.append('file', file);
+      try {
+        const r = await fetch('/api/upload', {method:'POST', body:fd}).then(x=>x.json());
+        if (r.error) { println('Upload failed: '+r.error, 'err'); return; }
+        println(`✓ Saved: ${r.filename} (${(r.size/1024).toFixed(1)} KB)`, 'ok');
+        println(`Path: ${r.path}`, 'sys');
+        if (r.content_preview) {
+          println(`Preview (first 300 chars):\n${r.content_preview.slice(0,300)}`, 'sys');
+          const doAnalyze = confirm(`Send "${r.filename}" to AI for analysis?`);
+          if (doAnalyze) {
+            await run('analyze', r.path + ' วิเคราะห์ไฟล์นี้ให้หน่อยครับ');
+          }
+        } else {
+          println(`Binary file saved. Use /analyze ${r.path} to read with AI`, 'sys');
+        }
+      } catch(e) { println('Error: '+e.message, 'err'); }
+      fi.remove();
+    };
+    fi.click();
+    break;
+  }
+
+  case 'uploads': {
+    const r = await api('GET', '/api/uploads');
+    if (r.error) { println(r.error, 'err'); break; }
+    if (!r.files.length) { println('No uploaded files yet. Use /upload', 'sys'); break; }
+    printTable(['Filename','Size'], r.files.map(f=>[f.name, (f.size/1024).toFixed(1)+' KB']));
+    println('Use /analyze <path> to send to AI', 'sys');
+    break;
+  }
+
+  case 'analyze': {
+    if (!args) { println('Usage: /analyze <path> [question]', 'warn'); break; }
+    const sp = args.indexOf(' ');
+    const fpath = sp>0 ? args.slice(0,sp) : args;
+    const question = sp>0 ? args.slice(sp+1) : 'วิเคราะห์ไฟล์นี้ให้หน่อยครับ';
+    println(`Analyzing: ${fpath}`, 'sys');
+    println(`Question: ${question}`, 'sys');
+    streaming = true;
+    const aiLine = document.createElement('div');
+    aiLine.className='line line-ai';
+    aiLine.innerHTML='<span class="pfx">AI</span><span class="txt" id="ais"></span><span class="cursor"></span>';
+    out.appendChild(aiLine); out.scrollTop=out.scrollHeight;
+    const span=aiLine.querySelector('#ais');
+    const cur=aiLine.querySelector('.cursor');
+    let full='';
+    try {
+      const res=await fetch('/api/analyze_file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:fpath,prompt:question,model:currentModel})});
+      const reader=res.body.getReader(); const dec=new TextDecoder(); let buf='';
+      while(true){
+        const{done,value}=await reader.read(); if(done)break;
+        buf+=dec.decode(value,{stream:true});
+        let idx;
+        while((idx=buf.indexOf('\n\n'))>=0){
+          const raw=buf.slice(0,idx).replace('data: ',''); buf=buf.slice(idx+2);
+          try{const d=JSON.parse(raw);if(d.content){full+=d.content;span.textContent=full;out.scrollTop=out.scrollHeight;}}catch{}
+        }
+      }
+    } catch(e){println('Error: '+e.message,'err');}
+    cur.remove(); streaming=false;
+    if(full) saveChatLine(full,'ai','AI');
+    break;
+  }
+
+  // ── Weather ────────────────────────────────────────────────────────────
+  case 'weather': {
+    const city = args || 'Bangkok';
+    println(`Fetching weather: ${city}...`, 'sys');
+    const r = await api('GET', `/api/weather?city=${encodeURIComponent(city)}&units=metric`);
+    if (r.error) { println(r.error + (r.hint ? '\n' + r.hint : ''), 'warn'); break; }
+
+    const windArrow = r.wind_kph>50?'💨':r.wind_kph>25?'🌬':'🍃';
+    const tempColor = r.temp>35?'err':r.temp>28?'warn':r.temp<15?'sys':'ok';
+    println(`Weather: ${r.city}${r.country?', '+r.country:''} [${r.source}]`, 'sys');
+    printTable(['Metric','Value'],[
+      ['Temperature', `${r.temp}°C  (feels ${r.feels}°C)`],
+      ['Condition',   r.desc],
+      ['Humidity',    r.humidity+'%'],
+      ['Wind',        windArrow+' '+r.wind_kph+' km/h'],
+      ...(r.sunrise?[['Sunrise', new Date(r.sunrise*1000).toLocaleTimeString()],['Sunset',new Date(r.sunset*1000).toLocaleTimeString()]]:[] )
+    ]);
+    if (r.forecast?.length) {
+      println('5-Day Forecast:', 'sys');
+      printTable(['Date','Max','Min','Desc','Rain'],
+        r.forecast.map(f=>[f.date, f.max+'°', f.min+'°', f.desc, f.rain_mm+'mm']));
+    }
+    if (!r.api_key_set) println('Tip: set OWM_API_KEY env for OpenWeatherMap (more accurate)', 'sys');
+    break;
+  }
+
+  // ── Hotspot / Internet sharing ─────────────────────────────────────────
+  case 'hotspot': {
+    const action = args.split(' ')[0] || 'status';
+    const parts  = args.split(' ');
+    const body   = {action, ssid: parts[1]||'ARIA-Net', password: parts[2]||'aria1234'};
+    const r = await api('POST', '/api/hotspot', body);
+    if (r.error) { println(r.error, 'err'); break; }
+    if (action === 'on' && r.ok) {
+      println(`✓ Hotspot started\nSSID: ${r.ssid || body.ssid}\nPassword: ${body.password}\nOther devices can now use your internet`, 'ok');
+    } else if (action === 'off' && r.ok) {
+      println('Hotspot stopped', 'ok');
+    } else {
+      println(r.output || (r.ok?'Done':'Failed'), r.ok?'sys':'warn');
+      println(`OS: ${r.os}\nUsage: /hotspot on [SSID] [password]`, 'sys');
+    }
+    break;
+  }
+
+  // ── SMS / Alerts ───────────────────────────────────────────────────────
+  case 'alert': case 'ntfy': {
+    if (!args && cmd==='alert') { println('Usage: /alert Title | message  or  /alert message\nChannels: ntfy (default), telegram, line, whatsapp', 'warn'); break; }
+    let title='ARIA Alert', message=args, channel='ntfy';
+    if (args.includes('|')) {
+      const pts = args.split('|');
+      title   = pts[0].trim();
+      message = pts.slice(1).join('|').trim();
+    }
+    // Parse optional channel flag
+    if (message.endsWith(' --all'))     { channel='all';       message=message.slice(0,-6); }
+    if (message.endsWith(' --tg'))      { channel='telegram';  message=message.slice(0,-5); }
+    if (message.endsWith(' --line'))    { channel='line';      message=message.slice(0,-6); }
+    if (message.endsWith(' --wa'))      { channel='whatsapp';  message=message.slice(0,-4); }
+    println(`Sending alert [${channel}]:\n  ${title}\n  ${message}`, 'sys');
+    const r = await api('POST', '/api/alert/send', {title, message, channel});
+    Object.entries(r.results||{}).forEach(([ch,v])=>{
+      println(`${ch}: ${v.ok?'✓ Sent':'✗ '+( v.error||'Failed')}`, v.ok?'ok':'warn');
+    });
+    if (channel==='ntfy'||channel==='all') println(`ntfy topic: ${r.topic}\nInstall ntfy app → subscribe to this topic`, 'sys');
+    break;
+  }
+
+  case 'alertconfig': {
+    const r = await api('GET', '/api/alert/config');
+    if (r.error) { println(r.error,'err'); break; }
+    println('Alert Channels:', 'sys');
+    printTable(['Channel','Available','Note'], Object.entries(r).map(([k,v])=>[
+      k,
+      v.available?'✓ Ready':'✗ Not set',
+      v.note+(k==='ntfy'?`\nTopic: ${v.topic}`:'')
+    ]));
+    println('Quick start: Install ntfy app (iOS/Android) → subscribe to topic shown above\nntfy requires no account — completely free', 'sys');
+    break;
+  }
+
+  default:
+    await chatStream('/'+cmd+' '+args);
+  }
+}
+
+// ── AI Chat streaming ─────────────────────────────────────────────────────
+async function chatStream(msg) {
+  streaming = true;
+  const aiLine = document.createElement('div');
+  aiLine.className = 'line line-ai';
+  aiLine.innerHTML = '<span class="pfx">AI</span><span class="txt" id="ais"></span><span class="cursor"></span>';
+  out.appendChild(aiLine);
+  out.scrollTop = out.scrollHeight;
+  const span = aiLine.querySelector('#ais');
+  const cur  = aiLine.querySelector('.cursor');
+  let fullResponse = '';
+  try {
+    const res = await fetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message:msg, model:currentModel})
+    });
+    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf='';
+    while(true) {
+      const{done,value}=await reader.read(); if(done) break;
+      buf += dec.decode(value,{stream:true});
+      let idx;
+      while((idx=buf.indexOf('\n\n'))>=0){
+        const raw=buf.slice(0,idx).replace('data: ',''); buf=buf.slice(idx+2);
+        try{ const d=JSON.parse(raw); if(d.content){fullResponse+=d.content;span.textContent=fullResponse;out.scrollTop=out.scrollHeight;} }catch{}
+      }
+    }
+  } catch(e) { println('Error: '+e.message, 'err'); }
+  cur.remove(); streaming = false;
+  // Save full AI response to chat history
+  if (fullResponse) saveChatLine(fullResponse, 'ai', 'AI');
+}
+
+// ── Autocomplete ──────────────────────────────────────────────────────────
+function onInput() {
+  const v = document.getElementById('cmd').value;
+  if (!v.startsWith('/') || v.length < 2) { hintHide(); return; }
+  const q = v.slice(1).toLowerCase();
+  const matches = CMDS.filter(c=>c.c.slice(1).toLowerCase().startsWith(q)).slice(0,8);
+  if (!matches.length) { hintHide(); return; }
+  document.getElementById('hintbox').innerHTML = matches.map((c,i)=>
+    `<div class="hitem${i===0?' sel':''}" data-c="${esc(c.c)}" onclick="ins('${esc(c.c)}')">\
+<span class="hcmd">${esc(c.c)}</span><span class="hdesc">${esc(c.d)}</span></div>`
+  ).join('');
+  document.getElementById('hintbox').style.display = 'block';
+}
+function hintHide() { document.getElementById('hintbox').style.display='none'; }
+function onKey(e) {
+  const inp = document.getElementById('cmd');
+  const items = document.querySelectorAll('#hintbox .hitem');
+  if (e.key==='Enter') { e.preventDefault(); doSend(); }
+  else if (e.key==='Tab' && items.length) {
+    e.preventDefault();
+    const sel = document.querySelector('#hintbox .sel');
+    ins(sel ? sel.dataset.c : items[0].dataset.c);
+  }
+  else if (e.key==='ArrowUp') {
+    e.preventDefault();
+    if (items.length) { /* cycle hints */ }
+    else if (histIdx < hist.length-1) { histIdx++; inp.value=hist[histIdx]||''; }
+  }
+  else if (e.key==='ArrowDown') {
+    e.preventDefault();
+    if (histIdx>0){histIdx--;inp.value=hist[histIdx]||'';}
+    else{histIdx=-1;inp.value='';}
+  }
+  else if (e.key==='Escape') hintHide();
+}
+function ins(cmd) {
+  document.getElementById('cmd').value=cmd;
+  document.getElementById('cmd').focus();
+  hintHide();
+}
+function updateHist(cmd) {
+  // Save to localStorage
+  const saved = lsGet(LS_CMD, []);
+  if (saved[0] !== cmd) {
+    saved.unshift(cmd);
+    if (saved.length > LS_MAX_CMD) saved.length = LS_MAX_CMD;
+    lsSet(LS_CMD, saved);
+  }
+  // Update sidebar UI
+  renderCmdHist();
+}
+function renderCmdHist() {
+  const saved = lsGet(LS_CMD, []);
+  const list = document.getElementById('hist-list');
+  list.innerHTML = saved.slice(0, 60).map(cmd =>
+    `<div class="hist-item" onclick="ins(${JSON.stringify(cmd)})" title="${cmd.replace(/"/g,'&quot;')}">${cmd.slice(0,38)}</div>`
+  ).join('');
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── File upload via button (📎) ─────────────────────────────────────────
+async function handleFileUpload(input) {
+  const file = input.files[0]; if(!file) return;
+  println(`📎 Uploading: ${file.name} (${(file.size/1024).toFixed(1)} KB)...`, 'sys');
+  const fd = new FormData(); fd.append('file', file);
+  input.value = ''; // reset
+  try {
+    const r = await fetch('/api/upload', {method:'POST', body:fd}).then(x=>x.json());
+    if (r.error) { println('Upload failed: '+r.error, 'err'); return; }
+    println(`✓ ${r.filename} saved (${(r.size/1024).toFixed(1)} KB)  path: ${r.path}`, 'ok');
+    saveChatLine(`Uploaded: ${r.filename}`, 'user', '❯');
+    if (r.content_preview) {
+      const doAnalyze = confirm(`"${r.filename}" uploaded.\nSend to AI for analysis?`);
+      if (doAnalyze) {
+        const q = prompt('Question for AI?', 'วิเคราะห์ไฟล์นี้ให้หน่อย') || 'วิเคราะห์ไฟล์นี้ให้หน่อย';
+        await run('analyze', r.path + ' ' + q);
+      }
+    } else {
+      // Binary file: offer RAG
+      const doRag2 = confirm(`"${r.filename}" uploaded.\nIndex in RAG so AI can answer questions from it?`);
+      if(doRag2){
+        const ragR = await api('POST','/api/rag/upload',{text:'',name:r.filename});
+        if(ragR.doc_id) println(`✓ RAG indexed: ${r.filename} — use /rag ask <question>`,'ok');
+        else println(`Use /rag upload after extracting text`,'sys');
+      } else {
+        println(`Binary/non-text file saved. Use /analyze ${r.path}`, 'sys');
+      }
+    }
+  } catch(e) { println('Error: '+e.message, 'err'); }
+}
+
+// ── VOICE I/O ─────────────────────────────────────────────────────────────
+let _ttsActive = true;
+function toggleVoice(){
+  if(Voice.isListening()){Voice.stopListening();return;}
+  Voice.startListening('th-TH');
+}
+function toggleTTS(){
+  _ttsActive = Voice.toggle();
+  const btn = document.getElementById('tts-btn');
+  if(btn){btn.textContent=_ttsActive?'🔊':'🔇';btn.title=_ttsActive?'TTS ON — click to mute':'TTS OFF — click to unmute';}
+  toast(_ttsActive?'Voice response ON':'Voice response OFF','info');
+}
+Voice.onTranscript(text=>{
+  const inp=document.getElementById('ci');
+  if(!inp)return;
+  inp.value=text;
+  const preview=document.getElementById('voice-preview');
+  if(preview){preview.style.display='block';setTimeout(()=>{preview.style.display='none';},2500);}
+  setTimeout(()=>doSend(),300);
+});
+
+// ── MEMORY INTEGRATION ────────────────────────────────────────────────────
+const _SID = 'sess_' + Date.now();
+Memory.setSession(_SID);
+
+// Override println to also save to server memory
+const _origPrintln = typeof println==='function' ? println : null;
+if(_origPrintln){
+  window.println = function(text, type='sys', pfx=''){
+    const d = _origPrintln(text, type, pfx);
+    // Save important messages to server memory
+    if(type==='user'||type==='ai'){
+      Memory.save(text, type==='user'?'user':'assistant', type==='ai'&&text.length>100);
+    }
+    // TTS for AI responses
+    if(type==='ai' && _ttsActive && text && !text.startsWith('Error')) {
+      Voice.speak(text);
+    }
+    return d;
+  };
+}
+
+// /memory command handler
+async function handleMemoryCmd(args){
+  if(!args||args==='stats'){
+    const s=await Memory.stats();
+    if(s.error){println('Memory: '+s.error,'err');return;}
+    println(`Memory DB:\n  Messages: ${s.total_messages}\n  Sessions: ${s.sessions}\n  Facts: ${s.facts}\n  Size: ${s.db_size_kb}KB\n  Oldest: ${s.oldest||'--'}`, 'sys');
+    return;
+  }
+  if(args.startsWith('search ')){
+    const q=args.slice(7);const r=await Memory.search(q);
+    if(!r.length){println('No memories found for: '+q,'sys');return;}
+    r.slice(0,10).forEach(m=>println(`[${new Date(m.ts*1000).toLocaleDateString()}] ${m.role}: ${m.content.slice(0,100)}`,'sys'));
+    return;
+  }
+  if(args.startsWith('fact ')){
+    const p=args.slice(5).split(':');
+    if(p.length<2){println('Usage: /memory fact key: value','warn');return;}
+    await Memory.saveFact(p[0].trim(), p.slice(1).join(':').trim());
+    println('Fact saved: '+p[0].trim(),'ok');return;
+  }
+  if(args==='clear'){
+    await api('POST','/api/memory/clear');println('Memory cleared','ok');return;
+  }
+  println('Memory commands:\n  /memory stats\n  /memory search <query>\n  /memory fact key: value\n  /memory clear','sys');
+}
+
+// /tasks command handler
+async function handleTasksCmd(args){
+  if(!args||args==='list'){
+    const jobs=await Scheduler.list();
+    if(!jobs.length){println('No scheduled tasks. Use: /tasks add Name | cmd | 3600','sys');return;}
+    jobs.forEach(j=>println(`[${j.enabled?'✓':'✗'}] ${j.id} — ${j.name}\n   cmd: ${j.cmd}\n   interval: ${j.interval_s}s | runs: ${j.runs} | last: ${j.last_result?.slice(0,60)||'--'}`, 'sys'));
+    return;
+  }
+  if(args.startsWith('add ')){
+    const parts=args.slice(4).split('|');
+    if(parts.length<2){println('Usage: /tasks add Name | shell:command | 3600','warn');return;}
+    const name=parts[0].trim(), cmd=parts[1].trim(), iv=parseInt(parts[2])||3600;
+    const r=await Scheduler.add(name,cmd,iv);
+    println(`Task created: ${r.id} — "${name}" every ${iv}s`,'ok');return;
+  }
+  if(args.startsWith('run ')){
+    const id=args.slice(4).trim();const r=await Scheduler.runNow(id);
+    println(`Task ${id}: ${r.ok?'OK':'FAIL'}\n${r.output||''}`,'ok');return;
+  }
+  if(args.startsWith('remove ')){
+    const id=args.slice(7).trim();await Scheduler.remove(id);
+    println(`Task ${id} removed`,'ok');return;
+  }
+  if(args.startsWith('logs ')){
+    const id=args.slice(5).trim();const logs=await Scheduler.logs(id);
+    logs.slice(0,5).forEach(l=>println(`[${new Date(l.ts*1000).toLocaleTimeString()}] ${l.success?'OK':'FAIL'} (${l.duration}s): ${(l.output||'').slice(0,80)}`,'sys'));
+    return;
+  }
+  println('Task commands:\n  /tasks list\n  /tasks add Name | shell:cmd | interval_seconds\n  /tasks add Alert | alert:Title|Message | 3600\n  /tasks run <id>\n  /tasks remove <id>\n  /tasks logs <id>','sys');
+}
+
+</script>
+<script src="/static/aria.js"></script>
+</body>
+</html>

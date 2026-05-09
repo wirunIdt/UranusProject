@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#3fb950">
+<link rel="manifest" href="/manifest.json">
+<title>ARIA · Settings</title>
+<link rel="stylesheet" href="/static/aria.css">
+<style>
+body{overflow-y:auto}
+.settings-wrap{max-width:820px;margin:60px auto 40px;padding:0 16px}
+.s-section{background:var(--bg2);border:1px solid var(--bg4);border-radius:var(--r);margin-bottom:12px;overflow:hidden}
+.s-sec-hd{padding:10px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;border-bottom:1px solid var(--bg4)}
+.s-sec-hd:hover{background:var(--bg3)}
+.s-sec-title{font-size:11px;font-weight:700;color:var(--t1);letter-spacing:.5px}
+.s-sec-sub{font-size:10px;color:var(--t2);margin-left:auto}
+.s-sec-arrow{color:var(--t2);font-size:12px;transition:transform .2s;flex-shrink:0}
+.s-sec-arrow.open{transform:rotate(90deg)}
+.s-body{display:none;padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.s-field{display:flex;flex-direction:column;gap:4px}
+.s-label{font-size:10px;color:var(--t2);font-weight:600}
+.s-input{background:var(--bg3);border:1px solid var(--bg4);color:var(--t1);padding:6px 10px;font-family:var(--font);font-size:12px;border-radius:var(--r);outline:none;transition:border-color .14s}
+.s-input:focus{border-color:var(--blue)}
+.s-select{background:var(--bg3);border:1px solid var(--bg4);color:var(--t1);padding:6px 10px;font-family:var(--font);font-size:12px;border-radius:var(--r);outline:none}
+.s-current{font-size:9px;color:var(--t3);margin-top:2px}
+.s-btn{padding:8px 20px;background:var(--bg3);border:1px solid var(--bg4);color:var(--t1);font-family:var(--font);font-size:12px;cursor:pointer;border-radius:var(--r);transition:all .14s}
+.s-btn:hover{border-color:var(--blue);color:var(--blue)}
+.s-btn.save{background:var(--green);border-color:var(--green);color:#0d1117;font-weight:700}
+.s-btn.save:hover{opacity:.85}
+.s-btn.danger{border-color:var(--red);color:var(--red)}.s-btn.danger:hover{background:rgba(248,81,73,.1)}
+.s-footer{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--bg4);padding:10px 20px;display:flex;align-items:center;gap:10px;z-index:10}
+.s-status{font-size:11px;color:var(--t2);flex:1}
+.s-warn{font-size:10px;color:var(--yellow);padding:4px 10px;background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.2);border-radius:var(--r);margin-bottom:8px;grid-column:1/-1}
+.ollama-models{padding:10px 16px;border-top:1px solid var(--bg4)}
+.model-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bg3);font-size:11px}
+.model-nm{flex:1;color:var(--t1)}.model-sz{color:var(--t2);font-size:10px}
+.pull-row{display:flex;gap:6px;padding:8px 0}
+.pull-row input{flex:1;background:var(--bg3);border:1px solid var(--bg4);color:var(--t1);padding:5px 9px;font-family:var(--font);font-size:11px;border-radius:var(--r);outline:none}
+.pull-row input:focus{border-color:var(--blue)}
+.pull-bar{height:3px;background:var(--bg3);border-radius:2px;margin-top:4px;overflow:hidden;display:none}
+.pull-fill{height:100%;background:var(--blue);width:0%;transition:width .3s}
+.pin-section{padding:10px 16px;border-top:1px solid var(--bg4)}
+</style>
+</head>
+<body>
+<div class="aria-topbar">
+  <button class="aria-hamburger" onclick="toggleMobileNav()">☰</button>
+  <span class="aria-logo">ARIA</span>
+  <span class="aria-sep">·</span>
+  <span class="aria-page">Settings</span>
+  <nav class="aria-nav">
+    <a href="/">Terminal</a><a href="/status">Status</a>
+    <a href="/finance">Finance</a><a href="/worldmonitor">WorldMonitor</a>
+    <a href="/help">Help</a><a href="/settings" class="active">Settings</a>
+  </nav>
+  <div class="aria-topbar-right">
+    <div class="aria-status-dot green" id="sys-dot"></div>
+    <span style="font-size:10px;color:var(--t2)">v{{version}}</span>
+  </div>
+</div>
+<nav class="aria-mobile-nav" id="mobile-nav">
+  <a href="/">Terminal</a><a href="/status">Status</a>
+  <a href="/settings" class="active">Settings</a><a href="/help">Help</a>
+</nav>
+
+<div class="settings-wrap">
+  <div style="margin-bottom:16px">
+    <div style="font-size:18px;font-weight:700;color:var(--t1)">Settings</div>
+    <div style="font-size:11px;color:var(--t2);margin-top:3px">Node: <span style="color:var(--blue)">{{node_id}}</span> — Changes saved to <code style="color:var(--yellow)">.aria.env</code> and applied immediately</div>
+  </div>
+
+  <!-- Sections rendered by JS -->
+  <div id="sections"></div>
+
+  <!-- Ollama Model Manager -->
+  <div class="s-section">
+    <div class="s-sec-hd" onclick="toggleSec(this)">
+      <span style="font-size:14px">🧠</span>
+      <span class="s-sec-title">Ollama Model Manager</span>
+      <span class="s-sec-sub" id="model-count">Loading...</span>
+      <span class="s-sec-arrow open">›</span>
+    </div>
+    <div class="s-body" style="display:block">
+      <div style="grid-column:1/-1">
+        <div id="model-list" style="margin-bottom:8px"></div>
+        <div class="pull-row">
+          <input id="pull-name" placeholder="Model name: qwen2.5:7b, llama3:8b, codestral...">
+          <button class="s-btn" onclick="pullModel()">⬇ Pull</button>
+        </div>
+        <div class="pull-bar" id="pull-bar"><div class="pull-fill" id="pull-fill"></div></div>
+        <div id="pull-status" style="font-size:10px;color:var(--t2);margin-top:4px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export / Import -->
+  <div class="s-section">
+    <div class="s-sec-hd" onclick="toggleSec(this)">
+      <span style="font-size:14px">💾</span>
+      <span class="s-sec-title">Backup & Restore</span>
+      <span class="s-sec-arrow open">›</span>
+    </div>
+    <div class="s-body" style="display:block;grid-template-columns:1fr 1fr">
+      <div>
+        <div class="s-label">Export all data</div>
+        <div style="font-size:10px;color:var(--t2);margin:4px 0 8px">Downloads memory, tasks, RAG, settings as .zip</div>
+        <button class="s-btn" onclick="exportData()">⬇ Download Backup</button>
+      </div>
+      <div>
+        <div class="s-label">Import backup</div>
+        <div style="font-size:10px;color:var(--t2);margin:4px 0 8px">Restore from a previous ARIA backup .zip</div>
+        <label class="s-btn" style="cursor:pointer">📂 Import .zip<input type="file" accept=".zip" style="display:none" onchange="importData(this)"></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Install as App -->
+  <div class="s-section">
+    <div class="s-sec-hd" onclick="toggleSec(this)">
+      <span style="font-size:14px">📲</span>
+      <span class="s-sec-title">Install as App (PWA)</span>
+      <span class="s-sec-arrow open">›</span>
+    </div>
+    <div class="s-body" style="display:block;grid-template-columns:1fr 1fr">
+      <div>
+        <div class="s-label" style="margin-bottom:6px">Android / Desktop</div>
+        <button class="s-btn" id="pwa-install-btn-s" onclick="installPWA()" style="margin-bottom:8px">📲 Install ARIA App</button>
+        <div style="font-size:10px;color:var(--t2)">หรือในชrome: เมนู (⋮) → Install ARIA</div>
+      </div>
+      <div>
+        <div class="s-label" style="margin-bottom:6px">iOS / iPadOS</div>
+        <div style="font-size:11px;color:var(--t1);line-height:1.8">
+          1. เปิดใน <strong>Safari</strong><br>
+          2. กดปุ่ม Share (☐↑)<br>
+          3. เลือก <strong>"Add to Home Screen"</strong><br>
+          4. กด Add
+        </div>
+      </div>
+      <div style="grid-column:1/-1;font-size:10px;color:var(--t3);margin-top:6px">
+        URL: <code style="color:var(--blue)" id="app-url">--</code> &nbsp;·&nbsp; 
+        ต้องเปิดจาก URL เดิมเสมอ (ไม่ใช่ localhost ถ้าใช้บนมือถือ — ใช้ IP ของเครื่อง)
+      </div>
+    </div>
+  </div>
+
+  <div style="height:60px"></div>
+</div>
+
+<!-- Save footer -->
+<div class="s-footer">
+  <span class="s-status" id="save-status">สถานะ: พร้อม</span>
+  <button class="s-btn" onclick="loadSettings()">↺ Reset</button>
+  <button class="s-btn save" onclick="saveAll()">💾 Save All Settings</button>
+</div>
+
+<script src="/static/aria.js"></script>
+<script>
+const _changes = {};
+document.getElementById('app-url').textContent = window.location.origin;
+
+function toggleSec(hd){
+  const arrow = hd.querySelector('.s-sec-arrow');
+  const body  = hd.nextElementSibling;
+  const open  = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if(arrow) arrow.className = 's-sec-arrow' + (open ? '' : ' open');
+}
+
+async function loadSettings(){
+  const schema = await api('GET','/api/settings/schema');
+  const vals   = await api('GET','/api/settings');
+  const wrap   = document.getElementById('sections');
+  wrap.innerHTML = '';
+
+  for(const [sid, sec] of Object.entries(schema)){
+    const secData = vals[sid] || {};
+    const div = document.createElement('div');
+    div.className = 's-section';
+    const icons = {ollama:'🤖',alerts:'🔔',bots:'🤖',threat:'🚨',network:'📡',data:'🔑',security:'🔐'};
+    let fields = '';
+    for(const [key, fmeta] of Object.entries(sec.fields)){
+      const curr = secData.fields?.[key]?.value ?? fmeta.default;
+      if(fmeta.type === 'select'){
+        const opts = (fmeta.options||[]).map(o=>
+          `<option value="${o}" ${o==curr?'selected':''}>${o}</option>`).join('');
+        fields += `<div class="s-field"><label class="s-label">${fmeta.label}</label>
+          <select class="s-select" data-key="${key}" onchange="_changes['${key}']=this.value">
+            ${opts}</select></div>`;
+      } else {
+        fields += `<div class="s-field"><label class="s-label">${fmeta.label}</label>
+          <input class="s-input" type="${fmeta.type}" data-key="${key}"
+            value="${fmeta.type==='password'?'':curr}" placeholder="${fmeta.default||''}"
+            oninput="_changes['${key}']=this.value">
+          ${curr&&fmeta.type==='password'?'<div class="s-current">● currently set</div>':''}
+          </div>`;
+      }
+    }
+    div.innerHTML = `<div class="s-sec-hd" onclick="toggleSec(this)">
+        <span style="font-size:14px">${icons[sid]||'⚙'}</span>
+        <span class="s-sec-title">${sec.label}</span>
+        <span class="s-sec-arrow open">›</span>
+      </div>
+      <div class="s-body">${fields}</div>`;
+    wrap.appendChild(div);
+  }
+}
+
+async function saveAll(){
+  if(!Object.keys(_changes).length){toast('Nothing changed','info');return;}
+  const btn=document.querySelector('.s-btn.save');
+  btn.textContent='Saving...';btn.disabled=true;
+  const r = await api('POST','/api/settings',_changes);
+  btn.textContent='💾 Save All Settings';btn.disabled=false;
+  if(r.ok){
+    toast(`Saved ${r.saved} settings ✓`,'ok');
+    document.getElementById('save-status').textContent=`Saved ${new Date().toLocaleTimeString()}`;
+    Object.keys(_changes).forEach(k=>delete _changes[k]);
+  } else {
+    toast('Save failed: '+r.error,'err');
+  }
+}
+
+async function loadModels(){
+  const r = await api('GET','/api/models');
+  const models = r.models || [];
+  document.getElementById('model-count').textContent = models.length+' models';
+  document.getElementById('model-list').innerHTML = models.map(m=>`
+    <div class="model-row">
+      <span class="model-nm">${m.name}</span>
+      <span class="model-sz">${m.size? (m.size/1e9).toFixed(1)+'GB':''}</span>
+      <span style="color:${m.name===r.current?'var(--green)':'var(--t3)'};font-size:10px">${m.name===r.current?'● active':''}</span>
+      <button onclick="deleteModel('${m.name}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:0 4px">🗑</button>
+    </div>`).join('');
+}
+
+async function pullModel(){
+  const name = document.getElementById('pull-name').value.trim();
+  if(!name){toast('Enter model name','warn');return;}
+  document.getElementById('pull-bar').style.display='block';
+  document.getElementById('pull-status').textContent='Pulling '+name+'...';
+  const fill = document.getElementById('pull-fill');
+  try{
+    const es = new EventSource(`/api/ollama/models/pull`);
+    // Use fetch streaming instead
+    const res = await fetch('/api/ollama/models/pull',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const reader = res.body.getReader(); const dec = new TextDecoder(); let buf='';
+    while(true){
+      const{done,value}=await reader.read(); if(done) break;
+      buf+=dec.decode(value,{stream:true});
+      let idx;
+      while((idx=buf.indexOf('\n\n'))>=0){
+        const raw=buf.slice(0,idx).replace('data: ',''); buf=buf.slice(idx+2);
+        try{
+          const d=JSON.parse(raw);
+          if(d.done){fill.style.width='100%';break;}
+          if(d.total&&d.completed) fill.style.width=(d.completed/d.total*100)+'%';
+          if(d.status) document.getElementById('pull-status').textContent=d.status;
+        }catch{}
+      }
+    }
+    toast(`${name} pulled ✓`,'ok');
+    loadModels();
+  }catch(e){toast('Pull failed: '+e.message,'err');}
+  document.getElementById('pull-bar').style.display='none';
+}
+
+async function deleteModel(name){
+  if(!confirm(`Delete model "${name}"?`)) return;
+  const r = await api('POST','/api/ollama/models/delete',{name});
+  if(r.ok){ toast(`Deleted: ${name}`,'ok'); loadModels(); }
+  else toast('Delete failed','err');
+}
+
+async function exportData(){
+  toast('Preparing backup...','info');
+  window.location = '/api/export';
+}
+
+async function importData(input){
+  const f = input.files[0]; if(!f) return;
+  const fd = new FormData(); fd.append('file',f);
+  toast('Importing...','info');
+  const r = await fetch('/api/import',{method:'POST',body:fd}).then(x=>x.json());
+  if(r.ok) toast(`Restored: ${r.restored?.join(', ')||'done'}`,'ok');
+  else toast('Import failed: '+r.error,'err');
+  input.value='';
+}
+
+onSysData(d=>{
+  document.getElementById('sys-dot').className='aria-status-dot green';
+});
+
+loadSettings();
+loadModels();
+</script>
+</body>
+</html>

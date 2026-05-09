@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#3fb950">
+<link rel="manifest" href="/manifest.json">
+<title>ARIA · Secure Vault</title>
+<link rel="stylesheet" href="/static/aria.css">
+<style>
+.vault-wrap{margin-top:46px;height:calc(100vh - 46px);display:grid;grid-template-columns:240px 1fr;overflow:hidden;background:var(--bg4);gap:1px}
+.vault-side{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.vault-main{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.v-hd{padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--bg4);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.v-title{font-size:10px;font-weight:700;color:var(--t1);letter-spacing:.5px}
+.cat-item{padding:8px 12px;cursor:pointer;font-size:12px;color:var(--t2);border-bottom:1px solid var(--bg3);display:flex;align-items:center;gap:7px;transition:all .12s}
+.cat-item:hover{background:var(--bg3);color:var(--t1)}
+.cat-item.sel{color:var(--green);background:var(--bg3);border-left:2px solid var(--green)}
+.secret-row{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--bg3);cursor:pointer;transition:background .1s}
+.secret-row:hover{background:var(--bg3)}
+.secret-nm{flex:1;font-size:12px;color:var(--t1);font-weight:600}
+.secret-cat{font-size:9px;color:var(--t3)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--bg4);border-radius:var(--r-lg);padding:20px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:16px}
+.field-group{margin-bottom:12px}
+.field-label{font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px;display:block}
+.field-row{display:flex;gap:4px}
+.reveal-btn{padding:6px 10px;background:var(--bg3);border:1px solid var(--bg4);color:var(--t2);cursor:pointer;border-radius:var(--r);font-size:11px}
+.reveal-btn:hover{color:var(--t1)}
+.lock-screen{display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:16px}
+.lock-icon{font-size:48px}
+.lock-title{font-size:16px;font-weight:700;color:var(--t1)}
+.lock-sub{font-size:11px;color:var(--t2);text-align:center;max-width:280px;line-height:1.7}
+.pin-input{background:var(--bg3);border:1px solid var(--bg4);color:var(--t1);padding:12px 14px;font-family:var(--font);font-size:16px;border-radius:var(--r);outline:none;width:220px;text-align:center;letter-spacing:4px}
+.pin-input:focus{border-color:var(--blue)}
+@media(max-width:768px){
+  .vault-wrap{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .vault-side{max-height:180px}
+}
+</style>
+</head>
+<body>
+<div class="aria-topbar">
+  <button class="aria-hamburger" onclick="toggleMobileNav()">☰</button>
+  <span class="aria-logo">ARIA</span><span class="aria-sep">·</span><span class="aria-page">Vault</span>
+  <nav class="aria-nav">
+    <a href="/">Terminal</a><a href="/status">Status</a>
+    <a href="/logs">Logs</a><a href="/scanner">Scanner</a>
+    <a href="/vault" class="active">Vault</a><a href="/settings">Settings</a>
+  </nav>
+  <div class="aria-topbar-right">
+    <div id="vault-badge" class="pill pill-red">🔒 Locked</div>
+    <button id="lock-btn" onclick="lockVault()" class="aria-btn" style="display:none;padding:4px 9px;font-size:10px">🔒 Lock</button>
+  </div>
+</div>
+<nav class="aria-mobile-nav" id="mobile-nav">
+  <a href="/">Terminal</a><a href="/status">Status</a>
+  <a href="/vault" class="active">Vault</a><a href="/settings">Settings</a>
+</nav>
+
+<div class="vault-wrap" id="vault-wrap" style="display:none">
+  <!-- Sidebar -->
+  <div class="vault-side">
+    <div class="v-hd">
+      <span class="v-title">Categories</span>
+      <button class="aria-btn" style="padding:3px 8px;font-size:10px;margin-left:auto" onclick="showAddModal()">+ Add</button>
+    </div>
+    <div id="cat-list" style="overflow-y:auto;flex:1">
+      <div class="cat-item sel" onclick="loadSecrets(null,this)">🗂 All Secrets</div>
+    </div>
+    <div style="padding:8px 12px;border-top:1px solid var(--bg4)">
+      <div id="vault-stats" style="font-size:10px;color:var(--t3)">Loading...</div>
+    </div>
+  </div>
+  <!-- Main -->
+  <div class="vault-main">
+    <div class="v-hd">
+      <span class="v-title" id="main-title">All Secrets</span>
+      <input id="vault-search" class="aria-input" style="max-width:160px;padding:4px 8px;font-size:10px" placeholder="Search...">
+    </div>
+    <div id="secrets-list" style="overflow-y:auto;flex:1"></div>
+  </div>
+</div>
+
+<!-- Lock screen -->
+<div id="lock-screen" style="display:flex;height:calc(100vh - 46px);margin-top:46px">
+  <div class="lock-screen">
+    <div class="lock-icon">🔐</div>
+    <div class="lock-title">ARIA Secure Vault</div>
+    <div class="lock-sub">All secrets are encrypted with your master password using AES-128-CBC (Fernet).<br>Your password never leaves this device.</div>
+    <input type="password" id="master-pw" class="pin-input" placeholder="Master Password" onkeydown="if(event.key==='Enter')unlockVault()">
+    <button class="aria-btn solid-green" style="width:220px;padding:10px" onclick="unlockVault()">🔓 Unlock Vault</button>
+    <div id="lock-error" style="color:var(--red);font-size:11px;display:none"></div>
+    <div style="font-size:10px;color:var(--t3);margin-top:8px">First time? Enter a new master password to create vault</div>
+  </div>
+</div>
+
+<!-- Add/Edit modal -->
+<div class="modal-overlay" id="secret-modal" onclick="e=>e.target===this&&closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modal-title">Add Secret</div>
+    <div class="field-group">
+      <label class="field-label">Name / Title *</label>
+      <input class="aria-input" id="s-name" placeholder="My Password / GitHub Key / API Token">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Category</label>
+      <input class="aria-input" id="s-cat" placeholder="passwords / api_keys / ssh / general" value="general">
+    </div>
+    <!-- Dynamic fields -->
+    <div class="field-group">
+      <label class="field-label">Username / Login</label>
+      <input class="aria-input" id="s-username" placeholder="username@example.com">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Password / Token / Secret</label>
+      <div class="field-row">
+        <input class="aria-input" id="s-password" type="password" placeholder="••••••••" style="flex:1">
+        <button class="reveal-btn" onclick="toggleReveal('s-password')">👁</button>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">URL / Endpoint</label>
+      <input class="aria-input" id="s-url" placeholder="https://...">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Notes</label>
+      <textarea class="aria-input" id="s-notes" rows="3" style="resize:vertical" placeholder="Extra info..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="aria-btn" onclick="closeModal()" style="flex:1">Cancel</button>
+      <button class="aria-btn solid-green" onclick="saveSecret()" style="flex:1">Save</button>
+    </div>
+    <input type="hidden" id="s-edit-id">
+  </div>
+</div>
+
+<script src="/static/aria.js"></script>
+<script>
+let _curCat=null, _editId=null;
+
+async function unlockVault(){
+  const pw=document.getElementById('master-pw').value;
+  if(!pw)return;
+  const r=await api('POST','/api/vault/unlock',{password:pw});
+  if(!r.ok){
+    const err=document.getElementById('lock-error');
+    err.style.display='block'; err.textContent=r.error||'Wrong password';
+    return;
+  }
+  document.getElementById('lock-screen').style.display='none';
+  document.getElementById('vault-wrap').style.display='grid';
+  document.getElementById('vault-badge').className='pill pill-green';
+  document.getElementById('vault-badge').textContent='🔓 Unlocked';
+  document.getElementById('lock-btn').style.display='block';
+  loadCats(); loadSecrets(null,document.querySelector('.cat-item'));
+}
+
+async function lockVault(){
+  await api('POST','/api/vault/lock');
+  document.getElementById('vault-wrap').style.display='none';
+  document.getElementById('lock-screen').style.display='flex';
+  document.getElementById('master-pw').value='';
+  document.getElementById('vault-badge').className='pill pill-red';
+  document.getElementById('vault-badge').textContent='🔒 Locked';
+  document.getElementById('lock-btn').style.display='none';
+}
+
+async function loadCats(){
+  const r=await api('GET','/api/vault/categories');
+  const catIcons={passwords:'🔑',api_keys:'🔐',ssh:'💻',banking:'🏦',general:'🗂',notes:'📝',crypto:'₿'};
+  const list=document.getElementById('cat-list');
+  list.innerHTML=`<div class="cat-item${!_curCat?' sel':''}" onclick="loadSecrets(null,this)">🗂 All Secrets</div>`
+    +(r.map(c=>`<div class="cat-item${_curCat===c?' sel':''}" onclick="loadSecrets('${c}',this)">${catIcons[c]||'🗂'} ${c}</div>`).join(''));
+  const stats=await api('GET','/api/vault/status');
+  document.getElementById('vault-stats').textContent=`${stats.total} secrets · ${stats.categories} categories`;
+}
+
+async function loadSecrets(cat,el){
+  _curCat=cat;
+  document.querySelectorAll('.cat-item').forEach(e=>e.classList.remove('sel'));
+  el?.classList.add('sel');
+  document.getElementById('main-title').textContent=cat||'All Secrets';
+  const r=await api('GET',`/api/vault/secrets${cat?'?category='+cat:''}`);
+  const q=(document.getElementById('vault-search').value||'').toLowerCase();
+  const filtered=r.filter(s=>!q||s.name.toLowerCase().includes(q)||s.category.includes(q));
+  document.getElementById('secrets-list').innerHTML=filtered.map(s=>`
+    <div class="secret-row" onclick="viewSecret(${s.id})">
+      <div>${s.category==='passwords'?'🔑':s.category==='api_keys'?'🔐':s.category==='ssh'?'💻':'🗂'}</div>
+      <div style="flex:1">
+        <div class="secret-nm">${s.name}</div>
+        <div class="secret-cat">${s.category} ${s.notes?'· '+s.notes.slice(0,40):''}</div>
+      </div>
+      <button onclick="event.stopPropagation();deleteSecret(${s.id},'${s.name}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:4px">🗑</button>
+    </div>`).join('') || '<div style="padding:14px;color:var(--t3);font-size:11px">No secrets. Click + Add to create one.</div>';
+}
+
+async function viewSecret(id){
+  const r=await api('GET',`/api/vault/secrets/${id}`);
+  if(!r||r.error){toast(r?.error||'Error','err');return;}
+  _editId=id;
+  document.getElementById('modal-title').textContent='Edit Secret';
+  document.getElementById('s-name').value=r.name||'';
+  document.getElementById('s-cat').value=r.category||'general';
+  document.getElementById('s-username').value=r.data?.username||'';
+  document.getElementById('s-password').value=r.data?.password||r.data?.token||r.data?.secret||'';
+  document.getElementById('s-url').value=r.data?.url||'';
+  document.getElementById('s-notes').value=r.notes||'';
+  document.getElementById('s-edit-id').value=id;
+  document.getElementById('secret-modal').classList.add('open');
+}
+
+function showAddModal(){
+  _editId=null;
+  document.getElementById('modal-title').textContent='Add Secret';
+  ['s-name','s-username','s-password','s-url','s-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('s-cat').value='general';
+  document.getElementById('s-edit-id').value='';
+  document.getElementById('secret-modal').classList.add('open');
+}
+
+function closeModal(){ document.getElementById('secret-modal').classList.remove('open'); }
+
+async function saveSecret(){
+  const name=document.getElementById('s-name').value.trim();
+  if(!name){toast('Name required','warn');return;}
+  const data={
+    username:document.getElementById('s-username').value,
+    password:document.getElementById('s-password').value,
+    url:document.getElementById('s-url').value,
+  };
+  const cat=document.getElementById('s-cat').value||'general';
+  const notes=document.getElementById('s-notes').value;
+  const editId=document.getElementById('s-edit-id').value;
+  if(editId){
+    await api('PUT',`/api/vault/secrets/${editId}`,{data,name,notes});
+    toast('Updated ✓','ok');
+  } else {
+    await api('POST','/api/vault/secrets',{name,data,category:cat,notes});
+    toast('Saved ✓','ok');
+  }
+  closeModal();loadCats();loadSecrets(_curCat,document.querySelector('.cat-item.sel'));
+}
+
+async function deleteSecret(id,name){
+  if(!confirm(`Delete "${name}"?`))return;
+  await api('DELETE',`/api/vault/secrets/${id}`);
+  toast(`Deleted: ${name}`,'ok');
+  loadCats();loadSecrets(_curCat,document.querySelector('.cat-item.sel'));
+}
+
+function toggleReveal(id){
+  const el=document.getElementById(id);
+  el.type=el.type==='password'?'text':'password';
+}
+
+document.getElementById('vault-search').addEventListener('input',()=>{
+  loadSecrets(_curCat,document.querySelector('.cat-item.sel'));
+});
+
+// Check if already unlocked
+api('GET','/api/vault/status').then(r=>{
+  if(r.unlocked){
+    document.getElementById('lock-screen').style.display='none';
+    document.getElementById('vault-wrap').style.display='grid';
+    document.getElementById('vault-badge').className='pill pill-green';
+    document.getElementById('vault-badge').textContent='🔓 Unlocked';
+    document.getElementById('lock-btn').style.display='block';
+    loadCats();loadSecrets(null,document.querySelector('.cat-item'));
+  }
+});
+</script>
+</body>
+</html>
