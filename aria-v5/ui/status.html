@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aria — System Status</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+:root{
+  --bg:#050a14;--bg2:#0a1020;--card:#0e1628;--card2:#131e30;
+  --border:rgba(255,255,255,.06);--b2:rgba(255,255,255,.1);
+  --accent:#00ff88;--cyan:#00d4ff;--purple:#7c3aed;
+  --gold:#f59e0b;--red:#ef4444;--orange:#f97316;
+  --txt1:#e2e8f0;--txt2:#475569;--txt3:#94a3b8;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--txt1);min-height:100vh;overflow-x:hidden;}
+
+/* Scanline effect */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;z-index:9999;}
+
+/* Topbar */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;background:rgba(5,10,20,.9);
+  border-bottom:1px solid rgba(0,255,136,.15);
+  backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;
+}
+.tb-brand{display:flex;align-items:center;gap:12px;}
+.tb-ico{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--cyan),var(--purple));display:grid;place-items:center;font-size:16px;}
+.tb-name{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--txt1);}
+.tb-sub{font-size:10px;color:var(--txt2);letter-spacing:1px;text-transform:uppercase;}
+.tb-status{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);}
+.tb-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:blink 1.5s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.tb-links{display:flex;gap:8px;}
+.tb-link{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;transition:all .2s;border:1px solid var(--border);color:var(--txt3);}
+.tb-link:hover{border-color:var(--cyan);color:var(--cyan);}
+.tb-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2);}
+
+/* Grid */
+.grid{display:grid;gap:14px;padding:20px;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));}
+.grid-wide{grid-column:1/-1;}
+.grid-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:768px){.grid-2col{grid-template-columns:1fr;}}
+
+/* Card */
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:16px;position:relative;overflow:hidden;
+  transition:border-color .3s;
+}
+.card:hover{border-color:rgba(0,212,255,.2);}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.3;}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.card-title{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--txt3);letter-spacing:.5px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;}
+.card-ico{font-size:14px;}
+.card-badge{font-size:10px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:6px;}
+.badge-ok{background:rgba(0,255,136,.1);color:var(--accent);border:1px solid rgba(0,255,136,.2);}
+.badge-warn{background:rgba(245,158,11,.1);color:var(--gold);border:1px solid rgba(245,158,11,.2);}
+.badge-err{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+
+/* Big metric */
+.big-num{font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;line-height:1;margin-bottom:4px;}
+.big-sub{font-size:11px;color:var(--txt2);}
+
+/* Circular gauge */
+.gauge-wrap{display:flex;justify-content:center;margin-bottom:12px;}
+.gauge{position:relative;width:120px;height:120px;}
+.gauge svg{transform:rotate(-90deg);}
+.gauge-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.gauge-pct{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;}
+.gauge-lbl{font-size:10px;color:var(--txt2);}
+
+/* Progress bars */
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.prog-lbl{font-size:11px;color:var(--txt3);width:70px;flex-shrink:0;font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.prog-track{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:5px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:5px;transition:width .5s ease;}
+.prog-val{font-size:10px;font-family:'JetBrains Mono',monospace;width:34px;text-align:right;flex-shrink:0;}
+
+/* Mini stats */
+.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.mini-stat{background:var(--card2);border-radius:9px;padding:10px;}
+.ms-val{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;margin-bottom:2px;}
+.ms-lbl{font-size:9px;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;}
+
+/* Sparkline chart */
+.chart-wrap{height:60px;position:relative;}
+canvas.sparkline{width:100%;height:100%;}
+
+/* Network */
+.net-item{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);}
+.net-item:last-child{border-bottom:none;}
+.net-name{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt1);}
+.net-val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2);}
+.net-up{color:var(--accent);}
+.net-dn{color:var(--cyan);}
+
+/* Process list */
+.proc-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03);}
+.proc-name{flex:1;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.proc-cpu{font-family:'JetBrains Mono',monospace;font-size:11px;width:40px;text-align:right;}
+.proc-bar{width:60px;height:3px;background:rgba(255,255,255,.06);border-radius:3px;}
+.proc-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--cyan),var(--purple));}
+
+/* GPU card */
+.gpu-big{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--txt1);margin-bottom:10px;}
+
+/* Alerts */
+.alert-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;margin-bottom:6px;font-size:12px;}
+.alert-crit{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);}
+.alert-warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);}
+.alert-ok{background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.1);}
+.a-ico{font-size:14px;flex-shrink:0;}
+.a-txt{flex:1;font-family:'JetBrains Mono',monospace;}
+.a-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;}
+.ab-crit{background:var(--red);color:#fff;}
+.ab-warn{background:var(--gold);color:#000;}
+.ab-ok{background:var(--accent);color:#000;}
+
+/* 7-Layer status */
+.layer-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:9px;margin-bottom:5px;background:var(--card2);}
+.l-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.l-name{flex:1;font-size:12px;font-weight:600;color:var(--txt1);}
+.l-desc{font-size:10px;color:var(--txt2);}
+.l-status{font-size:11px;font-family:'JetBrains Mono',monospace;}
+
+/* Ollama status */
+.model-pill{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;margin-bottom:7px;display:flex;align-items:center;gap:8px;}
+.mp-name{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt1);flex:1;}
+.mp-cur{font-size:10px;background:rgba(0,212,255,.1);color:var(--cyan);border-radius:5px;padding:2px 7px;}
+
+/* Uptime */
+.uptime-str{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--accent);margin-bottom:4px;}
+
+/* Refresh btn */
+.refresh-fab{position:fixed;bottom:24px;right:24px;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--purple));border:none;color:#fff;font-size:18px;cursor:pointer;box-shadow:0 4px 16px rgba(0,212,255,.3);transition:all .2s;z-index:200;}
+.refresh-fab:hover{transform:scale(1.1);}
+.spinning{animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-ico">📊</div>
+    <div>
+      <div class="tb-name">Aria AGI — System Status</div>
+      <div class="tb-sub">Monitor Board · Real-time</div>
+    </div>
+  </div>
+  <div class="tb-status"><div class="tb-dot"></div><span id="tb-status-txt">Connecting...</span></div>
+  <div class="tb-time" id="tb-clock">--:--:--</div>
+  <div class="tb-links">
+    <a href="/" class="tb-link">🏠 Home</a>
+    <a href="/public" class="tb-link">💬 Chat</a>
+    <a href="/chat" class="tb-link">🔐 Private</a>
+  </div>
+</div>
+
+<div class="grid" id="main-grid">
+
+  <!-- CPU -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><span class="card-ico">⚡</span>CPU Usage</div>
+      <span class="card-badge badge-ok" id="cpu-badge">OK</span>
+    </div>
+    <div class="gauge-wrap">
+      <div class="gauge">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="10"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="url(#cpuGrad)" stroke-width="10"
+                  stroke-linecap="round" stroke-dasharray="314" id="cpu-arc" stroke-dashoffset="314"/>
+          <defs><linearGradient id="cpuGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#00d4ff"/><stop offset="100%" stop-color="#7c3aed"/>
+          </linearGradient></defs>
+        </svg>
+        <div class="gauge-text">
+          <div class="gauge-pct" id="cpu-pct" style="color:var(--cyan)">0%</div>
+          <div class="gauge-lbl">CPU</div>
+        </div>
+      </div>
+    </div>
+    <div id="cpu-cores"></div>
+    <div class="mini-grid" style="margin-top:10px">
+      <div class="mini-stat"><div class="ms-val" id="cpu-cores-cnt" style="color:var(--cyan)">-</div><div class="ms-lbl">Cores</div></div>
+      <div class="mini-stat"><div class="ms-val" id="cpu-freq" style="color:var(--purple)">-</div><div class="ms-lbl">MHz</div></div>
+    </div>
+  </div>
+
+  <!-- CPU History chart -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><span class="card-ico">📈</span>CPU History</div>
+      <span style="font-size:10px;color:var(--txt2);font-family:'JetBrains Mono',monospace">last 30s</span>
+    </div>
+    <div class="chart-wrap" style="height:80px"><canvas id="cpu-chart"></canvas></div>
+    <div style="margin-top:12px">
+      <div class="chart-wrap" style="height:60px"><canvas id="mem-chart"></canvas></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt2);font-family:'JetBrains Mono',monospace;margin-top:4px">
+        <span style="color:var(--cyan)">── CPU</span>
+        <span style="color:var(--purple)">── RAM</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Disk Space -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><span class="card-ico">💾</span>Disk Space</div>
+    </div>
+    <div id="disk-list"></div>
+  </div>
+
+  <!-- Memory -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><span class="card-ico">🧠</span>Memory Usage</div>
+      <span class="card-badge badge-ok" id="mem-badge">OK</span>
+    </div>
+    <div class="gauge-wrap">
+      <div class="gauge">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="10"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="url(#memGrad)" stroke-width="10"
+                  stroke-linecap="round" stroke-dasharray="314" id="mem-arc" stroke-dashoffset="314"/>
+          <defs><linearGradient id="memGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#f472b6"/>
+          </linearGradient></defs>
+        </svg>
+        <div class="gauge-text">
+          <div class="gauge-pct" id="mem-pct" style="color:var(--purple)">0%</div>
+          <div class="gauge-lbl">RAM</div>
+        </div>
+      </div>
+    </div>
+    <div class="mini-grid">
+      <div class="mini-stat"><div class="ms-val" id="mem-used" style="color:var(--purple)">-</div><div class="ms-lbl">Used GB</div></div>
+      <div class="mini-stat"><div class="ms-val" id="mem-total" style="color:var(--txt3)">-</div><div class="ms-lbl">Total GB</div></div>
+      <div class="mini-stat"><div class="ms-val" id="mem-free" style="color:var(--accent)">-</div><div class="ms-lbl">Free GB</div></div>
+      <div class="mini-stat"><div class="ms-val" id="swap-pct" style="color:var(--gold)">-</div><div class="ms-lbl">Swap %</div></div>
+    </div>
+  </div>
+
+  <!-- Network -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><span class="card-ico">🌐</span>Network</div>
+    </div>
+    <div class="mini-grid" style="margin-bottom:12px">
+      <div class="mini-stat"><div class="ms-val net-up" id="net-sent">-</div><div class="ms-lbl">↑ Sent MB</div></div>
+      <div class="mini-stat"><div class="ms-val net-dn" id="net-recv">-</div><div class="ms-lbl">↓ Recv MB</div></div>
+    </div>
+    <div id="net-ifaces"></div>
+  </div>
+
+  <!-- GPU -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><span class="card-ico">🎮</span>GPU</div>
+      <span class="card-badge" id="gpu-badge">Checking...</span>
+    </div>
+    <div id="gpu-body"><div style="font-size:12px;color:var(--txt2);font-family:'JetBrains Mono',monospace">⟳ Loading...</div></div>
+  </div>
+
+  <!-- Processes -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><span class="card-ico">🔄</span>Top Processes</div>
+    </div>
+    <div id="proc-list"></div>
+  </div>
+
+  <!-- Ollama + Models -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><span class="card-ico">🤖</span>Ollama & Models</div>
+      <span class="card-badge" id="ollama-badge">-</span>
+    </div>
+    <div class="mini-grid" style="margin-bottom:10px">
+      <div class="mini-stat"><div class="ms-val" id="ollama-status" style="color:var(--accent)">-</div><div class="ms-lbl">Status</div></div>
+      <div class="mini-stat"><div class="ms-val" id="model-count" style="color:var(--cyan)">-</div><div class="ms-lbl">Models</div></div>
+    </div>
+    <div id="model-list"></div>
+  </div>
+
+  <!-- Uptime + System -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><span class="card-ico">⏱️</span>System Info</div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;color:var(--txt2);font-family:'JetBrains Mono',monospace;margin-bottom:4px">UPTIME</div>
+      <div class="uptime-str" id="uptime-str">--:--:--</div>
+    </div>
+    <div id="sys-info" style="font-size:11px;color:var(--txt2);font-family:'JetBrains Mono',monospace;line-height:1.8"></div>
+  </div>
+
+  <!-- 7-Layer Status (full width) -->
+  <div class="card grid-wide">
+    <div class="card-hdr">
+      <div class="card-title"><span class="card-ico">🧬</span>AGI 7-Layer Architecture</div>
+      <span class="card-badge badge-ok">ALL SYSTEMS GO</span>
+    </div>
+    <div class="grid-2col">
+      <div id="layer-left"></div>
+      <div id="layer-right"></div>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><span class="card-ico">🚨</span>System Alerts</div>
+      <span id="alert-count" class="card-badge badge-ok">0 alerts</span>
+    </div>
+    <div id="alerts-list"></div>
+  </div>
+
+</div>
+
+<button class="refresh-fab" id="refresh-btn" onclick="refreshAll()" title="Refresh">↺</button>
+
+<script>
+const API = '';
+let cpuHistory = [], memHistory = [], cpuCtx, memCtx;
+let alertList = [];
+
+// Clock
+setInterval(()=>{
+  document.getElementById('tb-clock').textContent =
+    new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+},1000);
+
+// ── Draw mini sparkline ──────────────────────────────────────────────────
+function drawSparkline(canvas, data, color, max=100){
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width=canvas.offsetWidth;
+  const H=canvas.height=canvas.offsetHeight;
+  ctx.clearRect(0,0,W,H);
+  if(data.length<2)return;
+  const step=W/(data.length-1);
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x=i*step;
+    const y=H-((v/max)*H);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+  // Fill
+  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,color+'40');grad.addColorStop(1,color+'00');
+  ctx.fillStyle=grad;ctx.fill();
+}
+
+// ── Circular gauge ────────────────────────────────────────────────────────
+function setGauge(arcId,pct){
+  const circ=314;
+  const offset=circ-(pct/100*circ);
+  const el=document.getElementById(arcId);
+  if(el)el.setAttribute('stroke-dashoffset',offset.toFixed(1));
+}
+
+// ── Color thresholds ─────────────────────────────────────────────────────
+function pctColor(p){
+  if(p>85)return'var(--red)';
+  if(p>65)return'var(--gold)';
+  return'var(--accent)';
+}
+function pctBadge(p){
+  if(p>85)return['badge-err','CRITICAL'];
+  if(p>65)return['badge-warn','WARNING'];
+  return['badge-ok','OK'];
+}
+function checkAlert(name, val, warn=70, crit=85){
+  if(val>crit) alertList.push({name,val,level:'CRITICAL'});
+  else if(val>warn) alertList.push({name,val,level:'WARNING'});
+}
+
+// ── Render all ────────────────────────────────────────────────────────────
+async function refreshAll(){
+  const btn=document.getElementById('refresh-btn');
+  btn.classList.add('spinning');
+  alertList=[];
+  try{
+    // Status (Ollama)
+    const sr=await fetch(API+'/api/status').then(r=>r.json());
+    renderOllama(sr);
+
+    // System stats
+    const stats=await fetch(API+'/api/system_stats').then(r=>r.json());
+    renderCPU(stats.cpu);
+    renderMemory(stats.memory);
+    renderDisk(stats.disk);
+    renderNetwork(stats.network);
+    renderGPU(stats.gpu);
+    renderProcesses(stats.processes||[]);
+    renderSysInfo(stats);
+    renderLayers();
+    renderAlerts();
+
+    document.getElementById('tb-status-txt').textContent='Online · v'+sr.version;
+  }catch(e){
+    document.getElementById('tb-status-txt').textContent='Server Offline';
+  }finally{
+    btn.classList.remove('spinning');
+  }
+}
+
+function renderCPU(cpu){
+  if(!cpu)return;
+  const pct=cpu.total||0;
+  document.getElementById('cpu-pct').textContent=pct+'%';
+  document.getElementById('cpu-pct').style.color=pctColor(pct);
+  setGauge('cpu-arc',pct);
+  document.getElementById('cpu-cores-cnt').textContent=cpu.count||'-';
+  document.getElementById('cpu-freq').textContent=cpu.freq_mhz||'-';
+  const [bc,bt]=pctBadge(pct);
+  document.getElementById('cpu-badge').className='card-badge '+bc;
+  document.getElementById('cpu-badge').textContent=bt;
+  // Cores bars
+  const cores=cpu.cores||[];
+  document.getElementById('cpu-cores').innerHTML=cores.slice(0,4).map((c,i)=>`
+    <div class="prog-row">
+      <div class="prog-lbl">Core ${i}</div>
+      <div class="prog-track"><div class="prog-fill" style="width:${c}%;background:${pctColor(c)}"></div></div>
+      <div class="prog-val" style="color:${pctColor(c)}">${c}%</div>
+    </div>`).join('');
+  // History
+  cpuHistory.push(pct); if(cpuHistory.length>30)cpuHistory.shift();
+  const cc=document.getElementById('cpu-chart');
+  if(cc)drawSparkline(cc,cpuHistory,'#00d4ff');
+  checkAlert('CPU',pct);
+}
+
+function renderMemory(mem){
+  if(!mem)return;
+  const pct=mem.percent||0;
+  document.getElementById('mem-pct').textContent=pct+'%';
+  document.getElementById('mem-pct').style.color=pctColor(pct);
+  setGauge('mem-arc',pct);
+  document.getElementById('mem-used').textContent=mem.used_gb||'-';
+  document.getElementById('mem-total').textContent=mem.total_gb||'-';
+  document.getElementById('mem-free').textContent=mem.free_gb||'-';
+  document.getElementById('swap-pct').textContent=(mem.swap_pct||0)+'%';
+  const [bc,bt]=pctBadge(pct);
+  document.getElementById('mem-badge').className='card-badge '+bc;
+  document.getElementById('mem-badge').textContent=bt;
+  memHistory.push(pct); if(memHistory.length>30)memHistory.shift();
+  const mc=document.getElementById('mem-chart');
+  if(mc)drawSparkline(mc,memHistory,'#7c3aed');
+  checkAlert('RAM',pct);
+}
+
+function renderDisk(disks){
+  if(!disks)return;
+  document.getElementById('disk-list').innerHTML=disks.map(d=>{
+    const c=pctColor(d.percent);
+    return `<div class="prog-row">
+      <div class="prog-lbl" title="${d.device}">${d.mount.slice(0,8)}</div>
+      <div class="prog-track"><div class="prog-fill" style="width:${d.percent}%;background:${c}"></div></div>
+      <div style="flex:0;font-size:10px;color:${c};font-family:'JetBrains Mono',monospace;white-space:nowrap;margin-left:6px">${d.used_gb}/${d.total_gb}GB</div>
+    </div>
+    <div style="font-size:9px;color:var(--txt2);font-family:'JetBrains Mono',monospace;margin-bottom:8px;padding-left:78px">${d.fstype} · Free: ${d.free_gb}GB</div>`;
+  }).join('');
+  disks.forEach(d=>checkAlert('Disk '+d.mount,d.percent,75,90));
+}
+
+function renderNetwork(net){
+  if(!net)return;
+  document.getElementById('net-sent').textContent=net.sent_mb||0;
+  document.getElementById('net-recv').textContent=net.recv_mb||0;
+  const ifaces=net.interfaces||[];
+  document.getElementById('net-ifaces').innerHTML=ifaces.map(i=>`
+    <div class="net-item">
+      <span class="net-name">${i.name}</span>
+      <span class="net-val">${i.speed_mb||0} Mb/s</span>
+      <span class="card-badge badge-ok" style="font-size:9px">UP</span>
+    </div>`).join('')||'<div style="font-size:12px;color:var(--txt2)">No interfaces</div>';
+}
+
+function renderGPU(gpu){
+  const body=document.getElementById('gpu-body');
+  const badge=document.getElementById('gpu-badge');
+  if(!gpu||!gpu.available){
+    body.innerHTML='<div style="font-size:12px;color:var(--txt2);font-family:\'JetBrains Mono\',monospace">❌ No NVIDIA GPU / nvidia-smi not found</div>';
+    badge.className='card-badge badge-err'; badge.textContent='N/A';
+    return;
+  }
+  const c=pctColor(gpu.util_pct);
+  badge.className='card-badge badge-ok'; badge.textContent='OK';
+  body.innerHTML=`
+    <div class="gpu-big">🎮 ${gpu.name}</div>
+    <div class="prog-row">
+      <div class="prog-lbl">Utilization</div>
+      <div class="prog-track"><div class="prog-fill" style="width:${gpu.util_pct}%;background:${c}"></div></div>
+      <div class="prog-val" style="color:${c}">${gpu.util_pct}%</div>
+    </div>
+    <div class="prog-row">
+      <div class="prog-lbl">VRAM</div>
+      <div class="prog-track"><div class="prog-fill" style="width:${gpu.mem_used_mb/gpu.mem_total_mb*100}%;background:var(--purple)"></div></div>
+      <div class="prog-val" style="color:var(--purple)">${(gpu.mem_used_mb/1024).toFixed(1)}GB</div>
+    </div>
+    <div class="mini-grid" style="margin-top:8px">
+      <div class="mini-stat"><div class="ms-val" style="color:var(--gold)">${gpu.temp_c}°C</div><div class="ms-lbl">Temp</div></div>
+      <div class="mini-stat"><div class="ms-val" style="color:var(--cyan)">${gpu.mem_total_mb/1024|0}GB</div><div class="ms-lbl">VRAM Total</div></div>
+    </div>`;
+  checkAlert('GPU Temp',gpu.temp_c,75,90);
+}
+
+function renderProcesses(procs){
+  document.getElementById('proc-list').innerHTML=procs.slice(0,8).map(p=>`
+    <div class="proc-item">
+      <div class="proc-name" title="${p.name}">${p.name}</div>
+      <div class="proc-bar"><div class="proc-fill" style="width:${Math.min(p.cpu,100)}%"></div></div>
+      <div class="proc-cpu" style="color:${pctColor(p.cpu)}">${p.cpu}%</div>
+    </div>`).join('');
+}
+
+function renderOllama(s){
+  const ok=s.ollama;
+  document.getElementById('ollama-status').textContent=ok?'✅ Online':'❌ Offline';
+  document.getElementById('model-count').textContent=(s.models||[]).length;
+  const badge=document.getElementById('ollama-badge');
+  badge.className='card-badge '+(ok?'badge-ok':'badge-err');
+  badge.textContent=ok?'Running':'Stopped';
+  const cur=s.current_model||'';
+  document.getElementById('model-list').innerHTML=(s.models||[]).map(m=>`
+    <div class="model-pill">
+      <div class="mp-name">${m}</div>
+      ${m===cur?'<span class="mp-cur">active</span>':''}
+    </div>`).join('');
+  if(!ok)alertList.push({name:'Ollama',val:'Offline',level:'WARNING'});
+}
+
+function renderSysInfo(stats){
+  const up=stats.uptime_s||0;
+  const h=Math.floor(up/3600),m=Math.floor((up%3600)/60),s=up%60;
+  document.getElementById('uptime-str').textContent=`${h}h ${m}m ${s}s`;
+  document.getElementById('sys-info').innerHTML=`
+    Platform: ${stats.platform||'-'}<br>
+    Python: ${stats.python||'-'}<br>
+    Process PID: ${window._aria_pid||'-'}`;
+}
+
+function renderLayers(){
+  const layers=[
+    {n:'Layer 1: Core Intelligence',  d:'Memory · Reasoning · Planning', c:'#00d4ff', ok:true},
+    {n:'Layer 2: Local Management',   d:'Files · Tasks · Processes',      c:'#7c3aed', ok:true},
+    {n:'Layer 3: Tool Integration',   d:'Shell · Python · Code',          c:'#10b981', ok:true},
+    {n:'Layer 4: Autonomy',           d:'Self-correction · Queue',         c:'#f59e0b', ok:true},
+  ];
+  const layers2=[
+    {n:'Layer 5: Safety & Control',   d:'Auth · Audit · Backdoor',        c:'#ef4444', ok:true},
+    {n:'Layer 6: Data Privacy',       d:'Local LLM · SQLite · Offline',   c:'#f472b6', ok:true},
+    {n:'Layer 7: Interface & UX',     d:'Dashboard · Vision · Voice',     c:'#a855f7', ok:true},
+  ];
+  const renderLayer=l=>`
+    <div class="layer-item">
+      <div class="l-dot" style="background:${l.c};box-shadow:0 0 8px ${l.c}"></div>
+      <div style="flex:1"><div class="l-name">${l.n}</div><div class="l-desc">${l.d}</div></div>
+      <div class="l-status" style="color:${l.ok?'var(--accent)':'var(--red)'}">
+        ${l.ok?'✅':'❌'}
+      </div>
+    </div>`;
+  document.getElementById('layer-left').innerHTML=layers.map(renderLayer).join('');
+  document.getElementById('layer-right').innerHTML=layers2.map(renderLayer).join('');
+}
+
+function renderAlerts(){
+  const list=document.getElementById('alerts-list');
+  const cnt=document.getElementById('alert-count');
+  cnt.textContent=alertList.length+' alerts';
+  cnt.className='card-badge '+(alertList.length?'badge-warn':'badge-ok');
+  if(!alertList.length){
+    list.innerHTML='<div class="alert-item alert-ok"><span class="a-ico">✅</span><span class="a-txt">All systems normal</span><span class="a-badge ab-ok">OK</span></div>';
+    return;
+  }
+  list.innerHTML=alertList.map(a=>`
+    <div class="alert-item ${a.level==='CRITICAL'?'alert-crit':'alert-warn'}">
+      <span class="a-ico">${a.level==='CRITICAL'?'🔴':'🟡'}</span>
+      <span class="a-txt">${a.name}: ${a.val}${typeof a.val==='number'?'%':''}</span>
+      <span class="a-badge ${a.level==='CRITICAL'?'ab-crit':'ab-warn'}">${a.level}</span>
+    </div>`).join('');
+}
+
+// ── Auto-refresh every 3s ────────────────────────────────────────────────
+refreshAll();
+setInterval(refreshAll, 3000);
+window.addEventListener('resize', ()=>{
+  const cc=document.getElementById('cpu-chart');
+  const mc=document.getElementById('mem-chart');
+  if(cc)drawSparkline(cc,cpuHistory,'#00d4ff');
+  if(mc)drawSparkline(mc,memHistory,'#7c3aed');
+});
+</script>
+</body>
+</html>

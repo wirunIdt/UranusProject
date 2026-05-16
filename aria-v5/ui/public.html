@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<title>Aria AI — Public</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+:root{--bg:#0b0f1e;--bg2:#0d1117;--sb:#0d1526;--card:#131c2e;--card2:#1a2540;--border:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13);--accent:#f472b6;--a2:#a855f7;--green:#10b981;--red:#ef4444;--gold:#f59e0b;--txt1:#e2e8f0;--txt2:#64748b;--txt3:#94a3b8;--ub:#7c2d55;--ab:#131c2e;--shadow:0 8px 32px rgba(0,0,0,.4);--r:14px;--r2:10px;--r3:22px;--safe-bottom:env(safe-area-inset-bottom,0px);}
+.light{--bg:#f9f0f7;--bg2:#f0e8f5;--sb:#fff;--card:#fff;--card2:#f5eefa;--border:rgba(0,0,0,.07);--b2:rgba(0,0,0,.13);--txt1:#1e293b;--txt2:#94a3b8;--txt3:#64748b;--ub:#7c2d55;--ab:#f8fafc;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;height:100dvh;overflow:hidden;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--txt1);transition:background .35s,color .35s;}
+::-webkit-scrollbar{width:4px;}.:-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px;}
+.shell{display:flex;height:100dvh;}
+/* Sidebar (slimmer) */
+.sb{width:230px;min-width:230px;background:var(--sb);border-right:1px solid var(--border);display:flex;flex-direction:column;position:relative;overflow-y:auto;z-index:50;}
+.sb::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.7;}
+.logo{padding:18px 16px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);}
+.logo-ico{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--a2));display:grid;place-items:center;font-size:18px;box-shadow:0 0 14px rgba(244,114,182,.3);}
+.logo-name{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;}
+.pub-badge{background:var(--accent);color:#fff;font-size:8px;padding:1px 5px;border-radius:4px;font-family:'JetBrains Mono',monospace;margin-top:2px;}
+.sb-sec{padding:10px 10px 6px;}
+.sb-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--txt2);padding:0 8px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r2);cursor:pointer;transition:all .18s;margin-bottom:2px;color:var(--txt3);font-size:12.5px;font-weight:500;}
+.ni:hover{background:var(--card2);color:var(--txt1);}
+.ni.active{background:linear-gradient(135deg,rgba(244,114,182,.12),rgba(168,85,247,.08));color:var(--accent);border:1px solid rgba(244,114,182,.2);}
+.ni.disabled{opacity:.4;cursor:not-allowed;}
+.ni-ic{font-size:14px;width:18px;text-align:center;}
+.sb-ln{height:1px;background:var(--border);margin:4px 12px;}
+/* Public notice */
+.pub-notice{margin:8px 12px;background:rgba(244,114,182,.08);border:1px solid rgba(244,114,182,.2);border-radius:10px;padding:10px;font-size:11px;color:var(--txt3);text-align:center;}
+.pub-notice .lock{font-size:18px;margin-bottom:4px;}
+/* Model (read only) */
+.model-info{padding:8px 12px;}
+.sl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt2);margin-bottom:5px;display:block;font-family:'JetBrains Mono',monospace;}
+.model-pill{background:var(--card2);border:1px solid var(--b2);border-radius:8px;padding:7px 10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt3);}
+/* Toggles */
+.tog-sec{padding:8px 12px;}
+.tr{display:flex;align-items:center;justify-content:space-between;padding:3px 0;}
+.tl{font-size:11px;color:var(--txt3);}
+.sw{width:36px;height:19px;border-radius:10px;background:var(--card2);border:1px solid var(--b2);cursor:pointer;position:relative;transition:.3s;flex-shrink:0;}
+.sw.on{background:var(--accent);border-color:var(--accent);}
+.sw.on2{background:var(--a2);border-color:var(--a2);}
+.sw.on3{background:var(--green);border-color:var(--green);}
+.sw::after{content:'';width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,.4);position:absolute;top:2px;left:2px;transition:.25s;}
+.sw.on::after,.sw.on2::after,.sw.on3::after{background:#fff;transform:translateX(17px);}
+/* Weather (same as private) */
+.wp{padding:8px 12px 6px;border-top:1px solid var(--border);}
+.wp-city-row{display:flex;gap:5px;margin-top:5px;}
+.wp-city{flex:1;background:var(--card2);border:1px solid var(--b2);border-radius:7px;color:var(--txt1);padding:5px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;outline:none;}
+.wp-city:focus{border-color:var(--accent);}
+.wpb{width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--b2);color:var(--txt3);cursor:pointer;font-size:12px;display:grid;place-items:center;}
+.wpb:hover{border-color:var(--accent);color:var(--accent);}
+#wp-body{font-size:11px;}
+.wp-cur{background:linear-gradient(135deg,rgba(244,114,182,.08),rgba(168,85,247,.05));border:1px solid rgba(244,114,182,.15);border-radius:var(--r);padding:10px;margin-bottom:6px;}
+.wp-t{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;}
+.wsv{font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace;}
+.wsl{font-size:9px;color:var(--txt2);}
+.wp-ss{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:7px;}
+.wp-s{background:rgba(0,0,0,.15);border-radius:7px;padding:5px;display:flex;align-items:center;gap:4px;}
+.fc-l{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt2);font-family:'JetBrains Mono',monospace;margin:5px 0 3px;}
+.fc-days{display:flex;flex-direction:column;gap:3px;}
+.fc-d{display:flex;align-items:center;gap:5px;background:var(--card2);border-radius:6px;padding:4px 6px;font-size:10px;}
+.fc-d.today{border:1px solid rgba(244,114,182,.2);}
+.sb-sp{flex:1;}
+.login-link{padding:10px 12px 14px;font-size:11px;color:var(--txt2);text-align:center;border-top:1px solid var(--border);}
+.login-link a{color:var(--accent);font-weight:600;text-decoration:none;}
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.topbar{display:flex;align-items:center;gap:8px;background:var(--sb);border-bottom:1px solid var(--border);padding:0 16px;height:52px;flex-shrink:0;}
+.tb-title{font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.tb-pill{background:linear-gradient(135deg,rgba(244,114,182,.15),rgba(168,85,247,.1));border:1px solid rgba(244,114,182,.25);border-radius:20px;padding:2px 8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);}
+.tb-sp{flex:1;}
+.tb-btn{width:32px;height:32px;border-radius:9px;background:var(--card2);border:1px solid var(--border);color:var(--txt2);font-size:13px;cursor:pointer;display:grid;place-items:center;transition:all .18s;}
+.tb-btn:hover{border-color:var(--accent);color:var(--accent);}
+.chat{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:5px;background:var(--bg);transition:background .35s;-webkit-overflow-scrolling:touch;}
+.date-div{display:flex;align-items:center;gap:10px;font-size:10px;color:var(--txt2);font-family:'JetBrains Mono',monospace;margin:3px 0;}
+.date-div::before,.date-div::after{content:'';flex:1;height:1px;background:var(--border);}
+.sys-msg{text-align:center;font-size:11px;color:var(--txt2);font-family:'JetBrains Mono',monospace;padding:3px;animation:fi .3s ease;}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+@keyframes su{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.msg-row{display:flex;gap:9px;align-items:flex-end;animation:su .3s ease;}
+.msg-row.user{flex-direction:row-reverse;}
+.av{width:32px;height:32px;border-radius:11px;flex-shrink:0;display:grid;place-items:center;font-size:15px;margin-bottom:22px;}
+.av.ai{background:linear-gradient(135deg,var(--accent),var(--a2));box-shadow:0 0 12px rgba(244,114,182,.25);}
+.av.user{background:linear-gradient(135deg,#7c2d55,#6b21a8);}
+.bub{max-width:72%;border-radius:var(--r);padding:11px 14px 7px;box-shadow:var(--shadow);}
+.bub.ai{background:var(--ab);border:1px solid var(--border);border-bottom-left-radius:4px;}
+.bub.user{background:var(--ub);border:1px solid rgba(168,85,247,.3);border-bottom-right-radius:4px;}
+.bt{font-size:13.5px;line-height:1.7;color:var(--txt1);white-space:pre-wrap;word-break:break-word;}
+.bub.user .bt{color:#f0e8ff;}
+.bmeta{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:5px;}
+.bts{font-size:9px;color:var(--txt2);font-family:'JetBrains Mono',monospace;}
+.bub.user .bts{color:rgba(240,232,255,.4);}
+.tdots{display:flex;gap:4px;padding:3px 1px;}
+.tdots span{width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:.4;animation:td 1.3s ease-in-out infinite;}
+.tdots span:nth-child(2){animation-delay:.2s;}.tdots span:nth-child(3){animation-delay:.4s;}
+@keyframes td{0%,80%,100%{transform:scale(.7);opacity:.3;}40%{transform:scale(1);opacity:1;}}
+.dbg{background:var(--bg2);border-top:1px solid var(--border);padding:6px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2);max-height:80px;overflow-y:auto;flex-shrink:0;display:none;}
+.dbg.show{display:block;}
+.dl{padding:1px 0;}.dl.ok{color:var(--green);}.dl.inf{color:var(--accent);}.dl.err{color:var(--red);}
+.fbar{background:var(--card);border-top:1px solid var(--border);padding:6px 12px;display:none;align-items:center;gap:8px;flex-shrink:0;}
+.fbar.show{display:flex;}
+.fb-chip{flex:1;background:rgba(244,114,182,.07);border:1px solid rgba(244,114,182,.2);border-radius:7px;padding:4px 10px;font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.fb-rm{width:24px;height:24px;border-radius:6px;background:transparent;border:none;color:var(--red);cursor:pointer;font-size:13px;display:grid;place-items:center;}
+/* Input - MOBILE FIXED */
+.inpbar{background:var(--sb);border-top:1px solid var(--border);padding:10px 12px;padding-bottom:calc(10px + var(--safe-bottom));flex-shrink:0;position:sticky;bottom:0;z-index:20;}
+.inp-row{display:flex;gap:7px;align-items:center;width:100%;}
+.att-btn{width:42px;height:42px;min-width:42px;border-radius:11px;background:var(--card2);border:1px solid var(--border);color:var(--txt2);font-size:17px;cursor:pointer;display:grid;place-items:center;flex-shrink:0;transition:all .2s;}
+.att-btn:hover{border-color:var(--a2);color:var(--a2);}
+.mic-btn{width:42px;height:42px;min-width:42px;border-radius:11px;background:var(--card2);border:1px solid var(--border);color:var(--txt2);font-size:17px;cursor:pointer;display:grid;place-items:center;flex-shrink:0;transition:all .2s;}
+.mic-btn:hover{border-color:var(--accent);color:var(--accent);}
+.mic-btn.listen{background:rgba(239,68,68,.12);border-color:var(--red);color:var(--red);animation:mp .8s ease-in-out infinite;}
+@keyframes mp{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.3);}50%{box-shadow:0 0 0 8px rgba(239,68,68,0);}}
+.chat-inp{flex:1;min-width:0;background:var(--card2);border:1px solid var(--border);border-radius:var(--r3);color:var(--txt1);padding:10px 16px;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;outline:none;transition:border-color .2s;height:44px;-webkit-appearance:none;}
+.chat-inp::placeholder{color:var(--txt2);}
+.chat-inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(244,114,182,.07);}
+.send-btn{height:44px;min-width:60px;padding:0 16px;border-radius:var(--r3);background:linear-gradient(135deg,var(--accent),var(--a2));border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .2s;box-shadow:0 0 14px rgba(244,114,182,.3);display:flex;align-items:center;}
+.send-btn:hover{transform:translateY(-1px);}
+.send-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--card);border:1px solid var(--b2);border-radius:9px;padding:7px 16px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--txt1);opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:999;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.mob-bar{display:none;background:var(--sb);border-bottom:1px solid var(--border);height:52px;padding:0 12px;align-items:center;gap:10px;flex-shrink:0;}
+.mob-ico{width:34px;height:34px;border-radius:9px;background:var(--card2);border:1px solid var(--border);cursor:pointer;display:grid;place-items:center;font-size:14px;color:var(--txt2);}
+.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:49;backdrop-filter:blur(4px);}
+/* Chat weather (same) */
+.chat-wx{background:linear-gradient(135deg,rgba(244,114,182,.06),rgba(168,85,247,.04));border:1px solid rgba(244,114,182,.15);border-radius:var(--r);padding:12px;}
+.cw-hdr{display:flex;justify-content:space-between;margin-bottom:8px;}
+.cw-loc{font-size:12px;font-weight:700;}
+.cw-time{font-size:10px;color:var(--txt2);font-family:'JetBrains Mono',monospace;}
+.cw-main{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.cw-big{font-size:40px;line-height:1;}
+.cw-temp{font-size:30px;font-weight:800;font-family:'JetBrains Mono',monospace;}
+.cw-desc{font-size:12px;font-weight:600;color:var(--accent);}
+.cw-feels{font-size:10px;color:var(--txt2);}
+.cw-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px;}
+.cw-s{background:rgba(0,0,0,.2);border-radius:7px;padding:6px;text-align:center;}
+.cw-sv{font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.cw-sl{font-size:9px;color:var(--txt2);}
+.cw-fc{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;}
+.cwfd{flex-shrink:0;background:rgba(0,0,0,.15);border-radius:7px;padding:7px;text-align:center;min-width:46px;}
+.cwfd.today{border:1px solid rgba(244,114,182,.25);}
+.cwfn{font-size:9px;color:var(--txt2);font-family:'JetBrains Mono',monospace;margin-bottom:3px;}
+.cwfi{font-size:16px;}.cwfx{font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.cwfm{font-size:9px;color:var(--txt2);font-family:'JetBrains Mono',monospace;}
+.cwfr{font-size:9px;color:var(--a2);}
+@media(max-width:768px){
+  .sb{position:fixed;left:-234px;top:0;bottom:0;z-index:50;transition:left .3s;box-shadow:4px 0 20px rgba(0,0,0,.4);}
+  .sb.open{left:0;}.mob-bar{display:flex;}.mob-overlay.show{display:block;}.topbar{display:none;}
+  .bub{max-width:86%;}.chat-inp{font-size:16px;}
+}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="mob-overlay" id="mob-ov" onclick="closeMob()"></div>
+<div class="shell" id="shell">
+
+<aside class="sb" id="sb">
+  <div class="logo">
+    <div class="logo-ico">🦾</div>
+    <div>
+      <div class="logo-name">Aria</div>
+      <div class="pub-badge">PUBLIC</div>
+    </div>
+  </div>
+
+  <div class="pub-notice">
+    <div class="lock">🌐</div>
+    Public Mode<br>
+    <small>AI Chat + Weather เท่านั้น<br>ไม่มี device/app control</small>
+  </div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">Chat</div>
+    <div class="ni active"><span class="ni-ic">💬</span>Chat</div>
+    <div class="ni disabled" title="Private only"><span class="ni-ic">🔒</span>App Control</div>
+    <div class="ni disabled" title="Private only"><span class="ni-ic">🔒</span>System Volume</div>
+    <div class="ni disabled" title="Private only"><span class="ni-ic">🔒</span>History</div>
+  </div>
+  <div class="sb-ln"></div>
+
+  <div class="model-info">
+    <span class="sl">Model</span>
+    <div class="model-pill" id="pub-model">⚡ Loading...</div>
+  </div>
+  <div class="sb-ln"></div>
+
+  <div class="tog-sec">
+    <div class="tr"><span class="tl" id="lbl-th">🌙 Dark</span><div class="sw" id="sw-th" onclick="toggleTheme(this)"></div></div>
+    <div class="tr"><span class="tl">🌐 TH/EN</span><div class="sw on2" id="sw-lg" onclick="toggleLang(this)"></div></div>
+    <div class="tr"><span class="tl">🔊 TTS</span><div class="sw on3" id="sw-tt" onclick="toggleSw(this,'tts')"></div></div>
+    <div class="tr"><span class="tl">🐛 Debug</span><div class="sw" id="sw-db" onclick="toggleDbg(this)"></div></div>
+  </div>
+  <div class="sb-ln"></div>
+
+  <div class="wp">
+    <span class="sl" style="margin-bottom:0">🌤️ Weather</span>
+    <div class="wp-city-row">
+      <input class="wp-city" id="wp-city" value="Bangkok" onkeydown="if(event.key==='Enter')fetchWeather()">
+      <button class="wpb" onclick="fetchWeather()">↺</button>
+    </div>
+    <div id="wp-body"><div style="text-align:center;color:var(--txt2);font-size:11px;padding:12px;font-family:'JetBrains Mono',monospace">⟳ Loading...</div></div>
+  </div>
+
+  <div class="sb-sp"></div>
+  <div class="login-link">🔐 <a href="/">Private Mode</a></div>
+</aside>
+
+<div class="main">
+  <div class="mob-bar">
+    <div class="mob-ico" onclick="openMob()">☰</div>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700">Aria Public</span>
+    <div style="flex:1"></div>
+    <div class="tb-btn" onclick="fetchWeatherChat()">🌤️</div>
+  </div>
+  <div class="topbar">
+    <span class="tb-title">Aria — Public Mode</span>
+    <span class="tb-pill">🌐 Public</span>
+    <span class="tb-pill" id="tb-pill" style="background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.25);color:var(--a2)">⚡ Loading...</span>
+    <div class="tb-sp"></div>
+    <div class="tb-btn" onclick="fetchWeatherChat()">🌤️</div>
+  </div>
+  <div class="chat" id="chat"></div>
+  <div class="dbg" id="dbg"></div>
+  <div class="fbar" id="fbar">
+    <div class="fb-chip" id="fb-chip">📎</div>
+    <button class="fb-rm" onclick="clearFile()">✕</button>
+  </div>
+  <div class="inpbar">
+    <div class="inp-row">
+      <label class="att-btn" for="file-in">📎</label>
+      <input type="file" id="file-in" style="display:none"
+        accept=".txt,.md,.py,.js,.html,.css,.json,.csv,.pdf,.png,.jpg,.jpeg,.webp"
+        onchange="onFile(this)">
+      <input type="text" class="chat-inp" id="chat-inp"
+        placeholder="ถามอะไรก็ได้..." onkeydown="onKey(event)"
+        autocomplete="off" enterkeyhint="send">
+      <div class="mic-btn" id="mic-btn" onclick="toggleMic()">🎤</div>
+      <button class="send-btn" id="send-btn" onclick="sendMsg()">ส่ง↑</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const API='';let lang='th',theme='dark',ttsOn=true,msgCount=0,pendingFile=null,micOn=false,isTyping=false,recog=null,wxCache=null;
+const S={th:{send:'ส่ง',ph:'ถามอะไรก็ได้...',thinking:'กำลังคิด...',listen:'🎤 กำลังฟัง...',g_morning:'สวัสดีตอนเช้าครับ! ☀️ ผม Aria ยินดีช่วยเหลือครับ',g_afternoon:'สวัสดีตอนบ่ายครับ! 🌤️ มีอะไรให้ช่วยไหมครับ?',g_evening:'สวัสดีตอนเย็นครับ! 🌆',g_night:'ดึกแล้วครับ 🌙 ยังตื่นอยู่ช่วยได้เลย'},en:{send:'Send',ph:'Ask me anything...',thinking:'Thinking...',listen:'🎤 Listening...',g_morning:'Good morning! ☀️ I\'m Aria. How can I help?',g_afternoon:'Good afternoon! 🌤️',g_evening:'Good evening! 🌆',g_night:'Night owl? 🌙 I\'m here!'}};
+const t=k=>S[lang][k]||k;
+const WMO={0:['☀️','แดดจัด','Clear'],1:['🌤️','แจ่มใส','Mainly Clear'],2:['⛅','มีเมฆ','Partly Cloudy'],3:['☁️','เมฆมาก','Overcast'],45:['🌫️','หมอก','Foggy'],51:['🌦️','ฝนปรอย','Drizzle'],61:['🌧️','ฝนเบา','Light Rain'],63:['🌧️','ฝน','Moderate Rain'],65:['🌧️','ฝนหนัก','Heavy Rain'],80:['🌦️','ฝนสั้น','Showers'],95:['⛈️','ฟ้าคะนอง','Thunderstorm']};
+const DTHS=['อา','จ','อ','พ','พฤ','ศ','ส'],DENS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const WDT=['เหนือ','ตอ.น.','ตะวันออก','ตอ.ต.','ใต้','ตต.ต.','ตะวันตก','ตต.น.'];
+function wmo(c,th){const d=WMO[c]||['❓','ไม่ทราบ','Unknown'];return[d[0],th?d[1]:d[2]];}
+async function init(){
+  const d=new Date();addDateDiv(d.toLocaleDateString('th-TH',{weekday:'long',year:'numeric',month:'long',day:'numeric'}));
+  const h=d.getHours();let gk=h<12?'g_morning':h<17?'g_afternoon':h<21?'g_evening':'g_night';
+  addMsg('ai',t(gk));
+  try{const r=await fetch(API+'/api/status');const data=await r.json();const m=data.current_model||data.models?.[0]||'qwen2.5:7b';document.getElementById('pub-model').textContent='⚡ '+m;document.getElementById('tb-pill').textContent='⚡ '+m;}catch(e){document.getElementById('pub-model').textContent='⚡ qwen2.5:7b';document.getElementById('tb-pill').textContent='⚡ qwen2.5:7b';}
+  setTimeout(()=>fetchWeather(),600);
+}
+async function fetchWeather(){
+  const city=document.getElementById('wp-city').value.trim()||'Bangkok';
+  document.getElementById('wp-body').innerHTML='<div style="text-align:center;color:var(--txt2);font-size:11px;padding:12px;font-family:JetBrains Mono,monospace">⟳ Loading...</div>';
+  try{
+    let data;
+    try{const r=await fetch(API+`/api/weather?city=${encodeURIComponent(city)}&lang=${lang}`);const j=await r.json();if(j.ok)data=j;}catch(e){}
+    if(!data){
+      const geo=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=th&format=json`);const gd=await geo.json();const loc=gd.results?.[0];if(!loc)throw new Error(`ไม่พบ "${city}"`);
+      const p=new URLSearchParams({latitude:loc.latitude,longitude:loc.longitude,timezone:loc.timezone||'Asia/Bangkok',current:'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,uv_index,surface_pressure',daily:'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',forecast_days:7});
+      const wr=await fetch('https://api.open-meteo.com/v1/forecast?'+p);const raw=await wr.json();const c2=raw.current;
+      data={ok:true,location:{name:loc.name,country:loc.country||''},current:{temp:c2.temperature_2m,feels:c2.apparent_temperature,humid:c2.relative_humidity_2m,wind_speed:c2.wind_speed_10m,wind_dir:WDT[Math.round(c2.wind_direction_10m/45)%8],uv:c2.uv_index,rain:c2.precipitation,pressure:Math.round(c2.surface_pressure),icon:wmo(c2.weather_code,lang==='th')[0],desc:wmo(c2.weather_code,lang==='th')[1],is_day:c2.is_day},forecast:raw.daily.time.map((dt,i)=>({date:dt,day:(lang==='th'?DTHS:DENS)[new Date(dt).getDay()],icon:wmo(raw.daily.weather_code[i],lang==='th')[0],max:Math.round(raw.daily.temperature_2m_max[i]),min:Math.round(raw.daily.temperature_2m_min[i]),rain_p:raw.daily.precipitation_probability_max[i]||0}))};
+    }
+    wxCache=data;
+    const isTh=lang==='th',c=data.current,loc=data.location;
+    const today=new Date().toISOString().split('T')[0];
+    let dH='';for(let i=0;i<7;i++){const f=data.forecast[i];if(!f)break;const isT=f.date===today;dH+=`<div class="fc-d${isT?' today':''}"><span style="font-size:10px;font-weight:600;width:24px;flex-shrink:0;font-family:'JetBrains Mono',monospace">${isT?(isTh?'วัน':'Today'):f.day}</span><span style="font-size:12px">${f.icon}</span><span style="flex:1;font-size:9px;color:var(--txt2);font-family:'JetBrains Mono',monospace">${f.max}°/${f.min}°</span><span style="font-size:9px;color:var(--a2);font-family:'JetBrains Mono',monospace">${f.rain_p}%</span></div>`;}
+    document.getElementById('wp-body').innerHTML=`<div class="wp-cur"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><span style="font-size:28px">${c.icon}</span><div><div class="wp-t">${Math.round(c.temp)}°</div><div style="font-size:10px;color:var(--txt2)">${c.desc}</div></div></div><div style="text-align:right"><div style="font-size:11px;font-weight:600;color:var(--accent)">${loc.name}</div></div></div><div class="wp-ss"><div class="wp-s"><span style="font-size:12px">💧</span><div><div class="wsv">${c.humid}%</div><div class="wsl">Humid</div></div></div><div class="wp-s"><span style="font-size:12px">💨</span><div><div class="wsv">${c.wind_speed}km/h</div><div class="wsl">${c.wind_dir}</div></div></div><div class="wp-s"><span style="font-size:12px">☔</span><div><div class="wsv">${c.rain}mm</div><div class="wsl">Rain</div></div></div><div class="wp-s"><span style="font-size:12px">🔵</span><div><div class="wsv">${c.pressure}</div><div class="wsl">hPa</div></div></div></div></div><div class="fc-l">${isTh?'7 วัน':'7-Day'}</div><div class="fc-days">${dH}</div>`;
+  }catch(e){document.getElementById('wp-body').innerHTML=`<div style="color:var(--red);font-size:11px;padding:6px;font-family:'JetBrains Mono',monospace">❌ ${e.message}</div>`;}
+}
+function fetchWeatherChat(){if(wxCache)renderWxChat(wxCache);else fetchWeather().then(()=>{if(wxCache)renderWxChat(wxCache);});}
+function renderWxChat(d){
+  const isTh=lang==='th',c=d.current,loc=d.location;
+  const today=new Date().toISOString().split('T')[0];let fcH='';
+  for(let i=0;i<5;i++){const f=d.forecast[i];if(!f)break;const isT=f.date===today;fcH+=`<div class="cwfd${isT?' today':''}"><div class="cwfn">${isT?(isTh?'วันนี้':'Today'):f.day}</div><div class="cwfi">${f.icon}</div><div class="cwfx">${f.max}°</div><div class="cwfm">${f.min}°</div><div class="cwfr">${f.rain_p}%</div></div>`;}
+  const card=document.createElement('div');card.className='bub ai';card.style.maxWidth='92%';
+  card.innerHTML=`<div class="chat-wx"><div class="cw-hdr"><div><div class="cw-loc">🌍 ${loc.name}${loc.country?', '+loc.country:''}</div><div style="font-size:10px;color:var(--txt2)">${isTh?'สภาพอากาศ':'Current Weather'}</div></div><div class="cw-time">${new Date().toLocaleTimeString(isTh?'th-TH':'en-US',{hour:'2-digit',minute:'2-digit'})}</div></div><div class="cw-main"><div class="cw-big">${c.icon}</div><div><div class="cw-temp">${Math.round(c.temp)}°C</div><div class="cw-desc">${c.desc}</div><div class="cw-feels">${isTh?'รู้สึก':'Feels'} ${Math.round(c.feels)}°C</div></div></div><div class="cw-grid"><div class="cw-s"><div class="cw-sv">${c.humid}%</div><div class="cw-sl">💧</div></div><div class="cw-s"><div class="cw-sv">${c.wind_speed}km</div><div class="cw-sl">💨</div></div><div class="cw-s"><div class="cw-sv">${c.rain}mm</div><div class="cw-sl">☔</div></div><div class="cw-s"><div class="cw-sv">${(c.uv||0).toFixed(1)}</div><div class="cw-sl">☀️UV</div></div><div class="cw-s"><div class="cw-sv">${c.pressure}</div><div class="cw-sl">🔵hPa</div></div><div class="cw-s"><div class="cw-sv">${c.is_day?'☀️':'🌙'}</div><div class="cw-sl">${isTh?c.is_day?'กลางวัน':'คืน':c.is_day?'Day':'Night'}</div></div></div><div style="margin:6px 0 4px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt2);font-family:'JetBrains Mono',monospace">${isTh?'5 วัน':'5-Day'}</div><div class="cw-fc">${fcH}</div></div><div class="bmeta"><span class="bts">${new Date().toLocaleTimeString(isTh?'th-TH':'en-US',{hour:'2-digit',minute:'2-digit'})}</span></div>`;
+  const row=document.createElement('div');row.className='msg-row';const av=document.createElement('div');av.className='av ai';av.textContent='🦾';row.appendChild(av);row.appendChild(card);document.getElementById('chat').appendChild(row);msgCount++;scrollBot();
+}
+const WXKW=['อากาศ','พยากรณ์','ฝน','ร้อน','หนาว','อุณหภูมิ','weather','forecast','rain','temperature'];
+async function sendMsg(){
+  const inp=document.getElementById('chat-inp');const text=inp.value.trim();if(!text||isTyping)return;inp.value='';
+  if(WXKW.some(k=>text.toLowerCase().includes(k))){let city='Bangkok';const pats=[/weather\s+(?:in|at)?\s*([a-zA-Z\u0E00-\u0E7F]+)/i,/(?:อากาศ|อุณหภูมิ|ฝน)(?:ที่|ใน)?\s*([a-zA-Z\u0E00-\u0E7F]+)/];for(const p of pats){const m=text.match(p);if(m){const c=m[1].trim().replace(/ครับ|ค่ะ/g,'').trim();if(c.length>=2){city=c;break;}}}addMsg('user',text);document.getElementById('wp-city').value=city;wxCache=null;await fetchWeather();if(wxCache)renderWxChat(wxCache);return;}
+  addMsg('user',text+(pendingFile?'\n📎 '+pendingFile.filename:''));
+  const payload={message:text,mode:'normal',public:true};
+  if(pendingFile){if(pendingFile.type==='image')payload.file_b64=pendingFile.base64;else payload.file_text=pendingFile.content;payload.filename=pendingFile.filename;}
+  clearFile();
+  isTyping=true;const btn=document.getElementById('send-btn');btn.disabled=true;btn.textContent='…';addSys(t('thinking'));showTyping();
+  const aiLbl=document.createElement('div');aiLbl.className='bt';aiLbl.textContent='▌';
+  const meta=document.createElement('div');meta.className='bmeta';const ts=document.createElement('span');ts.className='bts';ts.textContent=new Date().toLocaleTimeString(lang==='th'?'th-TH':'en-US',{hour:'2-digit',minute:'2-digit'});meta.appendChild(ts);
+  const bub=document.createElement('div');bub.className='bub ai';bub.appendChild(aiLbl);bub.appendChild(meta);
+  const av=document.createElement('div');av.className='av ai';av.textContent='🦾';
+  const row=document.createElement('div');row.className='msg-row';row.appendChild(av);row.appendChild(bub);
+  try{
+    const resp=await fetch(API+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    hideTyping();document.getElementById('chat').appendChild(row);msgCount++;scrollBot();
+    const reader=resp.body.getReader();const dec=new TextDecoder();let buf='',full='';
+    while(true){const{done,value}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';for(const l of lines){if(!l.startsWith('data: '))continue;const raw=l.slice(6).trim();if(raw==='[DONE]')break;try{const d=JSON.parse(raw);if(d.type==='chunk'){full+=d.text;aiLbl.textContent=full;scrollBot();}else if(d.type==='error'){aiLbl.textContent=d.text;aiLbl.style.color='var(--red)';}}catch(e){}}}
+    if(ttsOn&&full)speakTxt(full.slice(0,500));
+  }catch(e){hideTyping();if(!row.parentNode){document.getElementById('chat').appendChild(row);msgCount++;}const demos=lang==='th'?['ได้เลยครับ! 😊','เข้าใจครับ 👍']:['Sure! 😊','Got it! 👍'];setTimeout(()=>{aiLbl.textContent=demos[Math.floor(Math.random()*demos.length)];scrollBot();},400);}
+  finally{isTyping=false;btn.disabled=false;btn.textContent=t('send')+'↑';}
+}
+function speakTxt(text){if(!ttsOn||!('speechSynthesis'in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=lang==='th'?'th-TH':'en-US';u.rate=.92;speechSynthesis.speak(u);}
+function toggleMic(){const btn=document.getElementById('mic-btn');if(micOn){if(recog)recog.stop();micOn=false;btn.classList.remove('listen');btn.textContent='🎤';return;}const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){addSys('⚠️ Use Chrome/Edge');return;}recog=new SR();recog.lang=lang==='th'?'th-TH':'en-US';recog.onstart=()=>{micOn=true;btn.classList.add('listen');btn.textContent='⏸';addSys(t('listen'));};recog.onresult=e=>{document.getElementById('chat-inp').value=e.results[0][0].transcript;};recog.onerror=e=>{addSys('🎤 '+e.error);};recog.onend=()=>{micOn=false;btn.classList.remove('listen');btn.textContent='🎤';};recog.start();}
+async function onFile(inp){const f=inp.files[0];if(!f)return;const ext=f.name.split('.').pop().toLowerCase();const imgExts=['png','jpg','jpeg','webp','gif'];try{const fd=new FormData();fd.append('file',f);const r=await fetch(API+'/api/read_file',{method:'POST',body:fd});const d=await r.json();if(d.error)throw new Error(d.error);pendingFile=d;setFileBar(`📎 ${f.name}`);}catch(e){if(imgExts.includes(ext)){const fr=new FileReader();fr.onload=()=>{pendingFile={type:'image',base64:fr.result.split(',')[1],filename:f.name};setFileBar(`📎 ${f.name}`);};fr.readAsDataURL(f);}else{const fr=new FileReader();fr.onload=()=>{pendingFile={type:'text',content:fr.result,filename:f.name};setFileBar(`📎 ${f.name}`);};fr.readAsText(f);}}inp.value='';}
+function setFileBar(txt){document.getElementById('fb-chip').textContent=txt;document.getElementById('fbar').classList.add('show');}
+function clearFile(){pendingFile=null;document.getElementById('fbar').classList.remove('show');}
+function addDateDiv(txt){const el=document.createElement('div');el.className='date-div';el.textContent=txt;document.getElementById('chat').appendChild(el);}
+function addSys(txt){const el=document.createElement('div');el.className='sys-msg';el.textContent=txt;document.getElementById('chat').appendChild(el);scrollBot();}
+function addMsg(role,text){msgCount++;const row=document.createElement('div');row.className='msg-row '+role;const av=document.createElement('div');av.className='av '+(role==='user'?'user':'ai');av.textContent=role==='user'?'👤':'🦾';const bub=document.createElement('div');bub.className='bub '+role;const bt=document.createElement('div');bt.className='bt';bt.textContent=text;const meta=document.createElement('div');meta.className='bmeta';const ts=document.createElement('span');ts.className='bts';ts.textContent=new Date().toLocaleTimeString(lang==='th'?'th-TH':'en-US',{hour:'2-digit',minute:'2-digit'});meta.appendChild(ts);bub.appendChild(bt);bub.appendChild(meta);if(role==='user'){row.appendChild(bub);row.appendChild(av);}else{row.appendChild(av);row.appendChild(bub);}document.getElementById('chat').appendChild(row);scrollBot();}
+function showTyping(){const c=document.getElementById('chat');const r=document.createElement('div');r.id='typ-r';r.className='msg-row';const av=document.createElement('div');av.className='av ai';av.textContent='🦾';const b=document.createElement('div');b.className='bub ai';const d=document.createElement('div');d.className='tdots';d.innerHTML='<span></span><span></span><span></span>';b.appendChild(d);r.appendChild(av);r.appendChild(b);c.appendChild(r);scrollBot();isTyping=true;}
+function hideTyping(){const r=document.getElementById('typ-r');if(r)r.remove();isTyping=false;}
+function scrollBot(){const c=document.getElementById('chat');setTimeout(()=>c.scrollTop=c.scrollHeight,50);}
+function toggleTheme(sw){theme=theme==='dark'?'light':'dark';const L=theme==='light';L?sw.classList.add('on'):sw.classList.remove('on');document.getElementById('shell').className='shell'+(L?' light':'');document.getElementById('lbl-th').textContent=L?'☀️ Light':'🌙 Dark';toast(L?'☀️ Light':'🌙 Dark');}
+function toggleLang(sw){lang=lang==='th'?'en':'th';lang==='th'?sw.classList.add('on2'):sw.classList.remove('on2');document.getElementById('chat-inp').placeholder=t('ph');document.getElementById('send-btn').textContent=t('send')+'↑';if(wxCache){const city=document.getElementById('wp-city').value;wxCache=null;fetchWeather();}toast(lang==='th'?'🌐 ภาษาไทย':'🌐 English');}
+function toggleSw(sw,key){const on=!sw.classList.contains('on3');on?sw.classList.add('on3'):sw.classList.remove('on3');if(key==='tts'){ttsOn=on;toast(on?'🔊 TTS ON':'📵 TTS OFF');}}
+function toggleDbg(sw){const on=!sw.classList.contains('on');on?sw.classList.add('on'):sw.classList.remove('on');document.getElementById('dbg').classList.toggle('show',on);}
+function toast(msg,ms=2000){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),ms);}
+function openMob(){document.getElementById('sb').classList.add('open');document.getElementById('mob-ov').classList.add('show');}
+function closeMob(){document.getElementById('sb').classList.remove('open');document.getElementById('mob-ov').classList.remove('show');}
+function onKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}}
+document.getElementById('chat-inp').addEventListener('focus',()=>setTimeout(scrollBot,300));
+window.addEventListener('load',()=>{if('speechSynthesis'in window)speechSynthesis.getVoices();init();});
+</script>
+</body>
+</html>

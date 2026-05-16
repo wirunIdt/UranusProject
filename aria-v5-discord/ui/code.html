@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Aria Code — IDE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+:root{
+  --bg:#0d1117;--bg2:#010409;--card:#161b22;--card2:#21262d;--card3:#2d333b;
+  --border:rgba(255,255,255,.08);--b2:rgba(255,255,255,.14);
+  --accent:#58a6ff;--green:#3fb950;--red:#f85149;--orange:#d29922;
+  --purple:#bc8cff;--cyan:#79c0ff;--pink:#f778ba;--lime:#7ee787;
+  --txt1:#e6edf3;--txt2:#7d8590;--txt3:#8b949e;
+  --r:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg2);color:var(--txt1);}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:5px;}
+input,select,textarea,button{font-family:inherit;}
+button{cursor:pointer;}
+
+/* ═══ LAYOUT ═══ */
+.shell{display:grid;height:100vh;
+  grid-template-rows:42px 1fr 240px;
+  grid-template-columns:220px 1fr 380px;
+  grid-template-areas:"topbar topbar topbar" "filetree editor debugpanel" "terminal terminal debugpanel";}
+
+/* ═══ TOPBAR ═══ */
+.topbar{grid-area:topbar;background:var(--bg);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:8px;}
+.tb-logo{display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;}
+.tb-ico{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--purple));display:grid;place-items:center;font-size:13px;}
+.tb-sp{flex:1;}
+.tb-ws{display:flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2);cursor:pointer;max-width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.tb-ws:hover{border-color:var(--accent);color:var(--txt1);}
+.tbtn{height:26px;padding:0 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--txt2);font-size:11px;white-space:nowrap;}
+.tbtn:hover{border-color:var(--accent);color:var(--accent);}
+.tbtn.g{background:var(--green);border-color:var(--green);color:#000;font-weight:600;}
+.tbtn.b{background:var(--accent);border-color:var(--accent);color:#000;font-weight:600;}
+.tbtn.r{background:var(--red);border-color:var(--red);color:#fff;}
+.tb-lnk{padding:3px 9px;border-radius:6px;font-size:12px;color:var(--txt2);text-decoration:none;}
+.tb-lnk:hover{color:var(--txt1);background:var(--card2);}
+.mode-sel{background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--txt1);padding:3px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;outline:none;}
+
+/* ═══ FILE TREE ═══ */
+.filetree{grid-area:filetree;background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.pane-hdr{padding:8px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;}
+.pane-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--txt2);font-family:'JetBrains Mono',monospace;}
+.icon-btn{width:22px;height:22px;border:none;background:transparent;color:var(--txt2);font-size:13px;border-radius:4px;display:grid;place-items:center;}
+.icon-btn:hover{background:var(--card2);color:var(--txt1);}
+.ft-search-box{padding:5px 8px;border-bottom:1px solid var(--border);}
+.ft-search-box input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--txt1);padding:3px 7px;font-size:11px;font-family:'JetBrains Mono',monospace;outline:none;}
+.ft-body{flex:1;overflow-y:auto;}
+.ft-item{display:flex;align-items:center;gap:5px;padding:3px 7px;cursor:pointer;font-size:11.5px;user-select:none;}
+.ft-item:hover{background:rgba(255,255,255,.04);}
+.ft-item.sel{background:rgba(88,166,255,.1);}
+.ft-item.sel .fn{color:var(--accent);}
+.fn{flex:1;color:var(--txt1);font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ft-item.dir .fn{color:var(--cyan);}
+.fsz{font-size:10px;color:var(--txt2);flex-shrink:0;}
+
+/* ═══ EDITOR ═══ */
+.editor-col{grid-area:editor;display:flex;flex-direction:column;overflow:hidden;}
+/* Tabs */
+.tab-bar{background:var(--bg);border-bottom:1px solid var(--border);display:flex;min-height:34px;overflow-x:auto;}
+.tab-bar::-webkit-scrollbar{height:0;}
+.tab{display:flex;align-items:center;gap:6px;padding:0 12px;height:34px;font-size:11.5px;font-family:'JetBrains Mono',monospace;color:var(--txt2);cursor:pointer;border-right:1px solid var(--border);white-space:nowrap;flex-shrink:0;}
+.tab:hover{background:var(--card2);}
+.tab.act{background:var(--card);color:var(--txt1);border-top:2px solid var(--accent);padding-top:2px;}
+.tab-x{font-size:11px;opacity:.4;width:14px;height:14px;border-radius:3px;display:grid;place-items:center;}
+.tab:hover .tab-x{opacity:.8;}.tab-x:hover{background:rgba(255,255,255,.1);}
+/* Toolbar */
+.editor-toolbar{background:var(--bg);border-bottom:1px solid var(--border);padding:4px 10px;display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.et-btn{height:24px;padding:0 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--txt2);font-size:11px;}
+.et-btn:hover{border-color:var(--accent);color:var(--accent);}
+.et-sep{width:1px;height:16px;background:var(--border);}
+/* Editor */
+.editor-wrap{flex:1;display:flex;overflow:hidden;position:relative;}
+.line-gutter{background:var(--bg);border-right:1px solid var(--border);min-width:44px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.58;color:var(--txt2);overflow:hidden;user-select:none;padding-top:10px;}
+.lg-num{padding:0 8px 0 4px;}
+.code-area{flex:1;background:var(--bg);border:none;outline:none;color:var(--txt1);font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.58;padding:10px 12px;resize:none;overflow:auto;tab-size:2;caret-color:var(--accent);}
+/* Status bar */
+.status-bar{background:var(--bg);border-top:1px solid var(--border);padding:2px 12px;display:flex;align-items:center;gap:12px;font-size:11px;color:var(--txt2);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.sb-item{display:flex;align-items:center;gap:3px;}
+.sb-dot{width:7px;height:7px;border-radius:50%;}
+
+/* ═══ DEBUG PANEL (RIGHT) ═══ */
+.debugpanel{grid-area:debugpanel;background:var(--bg);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+/* Debug tabs */
+.dbg-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;overflow-x:auto;}
+.dbg-tabs::-webkit-scrollbar{height:0;}
+.dtab{height:34px;padding:0 12px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--txt2);cursor:pointer;border-right:1px solid var(--border);white-space:nowrap;display:flex;align-items:center;gap:5px;flex-shrink:0;}
+.dtab:hover{color:var(--txt1);}
+.dtab.act{color:var(--txt1);border-bottom:2px solid var(--accent);background:var(--card);}
+.dbg-count{background:var(--card2);border-radius:10px;padding:1px 5px;font-size:9px;}
+
+/* Panel bodies */
+.dpanel{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.dpanel.show{display:flex;}
+.dpanel-body{flex:1;overflow-y:auto;padding:10px;}
+
+/* ── RESULT PANEL ── */
+.result-section{margin-bottom:14px;}
+.rs-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--txt2);font-family:'JetBrains Mono',monospace;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.rs-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.result-block{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;color:var(--txt1);}
+.result-block.ok{border-left:3px solid var(--green);}
+.result-block.err{border-left:3px solid var(--red);color:var(--red);}
+.result-block.warn{border-left:3px solid var(--orange);}
+.metric-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.metric{background:var(--card2);border-radius:7px;padding:7px 11px;text-align:center;min-width:70px;}
+.metric-val{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;margin-bottom:2px;}
+.metric-lbl{font-size:9px;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;}
+
+/* ── TRACE PANEL ── */
+.trace-steps{display:flex;flex-direction:column;gap:3px;}
+.trace-step{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.trace-step-hdr{display:flex;align-items:center;gap:8px;padding:5px 9px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;}
+.trace-step-hdr:hover{background:rgba(255,255,255,.03);}
+.ts-event{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;text-transform:uppercase;}
+.tse-call{background:rgba(88,166,255,.15);color:var(--accent);}
+.tse-line{background:rgba(63,185,80,.1);color:var(--green);}
+.tse-return{background:rgba(188,140,255,.15);color:var(--purple);}
+.tse-exception{background:rgba(248,81,73,.15);color:var(--red);}
+.ts-func{color:var(--cyan);flex:1;}
+.ts-line{color:var(--txt2);}
+.trace-vars{padding:6px 9px;background:var(--bg2);border-top:1px solid var(--border);display:none;}
+.trace-step.open .trace-vars{display:block;}
+.tvar-row{display:flex;align-items:baseline;gap:8px;padding:2px 0;font-family:'JetBrains Mono',monospace;font-size:11px;}
+.tvar-name{color:var(--orange);min-width:80px;}
+.tvar-val{color:var(--txt1);word-break:break-all;}
+.tvar-type{font-size:9px;color:var(--txt2);flex-shrink:0;}
+
+/* ── PROFILER PANEL ── */
+.profile-table{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:11px;}
+.profile-table th{padding:5px 8px;text-align:left;color:var(--txt2);font-weight:600;border-bottom:1px solid var(--border);text-transform:uppercase;font-size:10px;}
+.profile-table td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--txt1);}
+.profile-table tr:hover td{background:rgba(255,255,255,.03);}
+.perf-bar{height:4px;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--purple));margin-top:2px;}
+.td-func{color:var(--cyan);}
+.td-file{color:var(--txt3);}
+.td-time{color:var(--green);}
+.td-calls{color:var(--orange);}
+
+/* ── DATA LINK / CALL GRAPH ── */
+.graph-canvas-wrap{position:relative;width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px;}
+canvas.graph-canvas{display:block;}
+.graph-legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-family:'JetBrains Mono',monospace;font-size:10px;}
+.gl-item{display:flex;align-items:center;gap:5px;color:var(--txt2);}
+.gl-dot{width:10px;height:10px;border-radius:50%;}
+.func-list{display:flex;flex-direction:column;gap:5px;}
+.func-item{background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;}
+.fi-name{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--cyan);}
+.fi-meta{font-size:10px;color:var(--txt2);margin-top:2px;}
+.fi-args{color:var(--orange);}
+.fi-ret{color:var(--purple);}
+.fi-callers{font-size:10px;color:var(--txt2);margin-top:4px;}
+.call-arrow{color:var(--accent);}
+.import-item{display:flex;align-items:center;gap:8px;padding:4px 8px;border-bottom:1px solid rgba(255,255,255,.04);font-family:'JetBrains Mono',monospace;font-size:11px;}
+.imp-mod{color:var(--lime);}
+.imp-as{color:var(--txt2);}
+.imp-line{color:var(--txt3);}
+
+/* ── VARIABLE INSPECTOR ── */
+.var-list{display:flex;flex-direction:column;gap:3px;}
+.var-item{display:flex;align-items:baseline;gap:8px;padding:6px 9px;background:var(--card2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;}
+.vi-name{color:var(--orange);min-width:100px;font-weight:600;}
+.vi-val{color:var(--txt1);flex:1;word-break:break-all;}
+.vi-scope{font-size:9px;color:var(--txt2);background:var(--card);border-radius:4px;padding:1px 5px;}
+
+/* ═══ TERMINAL ═══ */
+.terminal{grid-area:terminal;background:var(--bg2);border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.term-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0;}
+.ttab{height:30px;padding:0 12px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--txt2);cursor:pointer;border-right:1px solid var(--border);display:flex;align-items:center;}
+.ttab:hover{color:var(--txt1);}
+.ttab.act{color:var(--txt1);background:var(--card);}
+.term-sp{flex:1;}
+.term-body{flex:1;overflow-y:auto;padding:6px 12px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.5;}
+.tl{white-space:pre-wrap;word-break:break-all;}
+.tl.cmd{color:var(--accent);}
+.tl.ok{color:var(--green);}
+.tl.err{color:var(--red);}
+.tl.warn{color:var(--orange);}
+.tl.info{color:var(--cyan);}
+.tl.sys{color:var(--txt2);font-style:italic;}
+.term-row{display:flex;align-items:center;gap:6px;padding:4px 12px;border-top:1px solid var(--border);flex-shrink:0;}
+.term-ps{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--green);white-space:nowrap;}
+.term-inp{flex:1;background:transparent;border:none;outline:none;color:var(--txt1);font-family:'JetBrains Mono',monospace;font-size:12.5px;}
+
+/* Context menu */
+.ctxm{position:fixed;background:var(--card);border:1px solid var(--b2);border-radius:var(--r);padding:4px 0;z-index:999;min-width:150px;box-shadow:0 8px 24px rgba(0,0,0,.6);display:none;}
+.ctxm.show{display:block;}
+.ctxm-item{padding:6px 13px;font-size:12px;cursor:pointer;}
+.ctxm-item:hover{background:var(--card2);}
+.ctxm-item.danger{color:var(--red);}
+.ctxm-sep{height:1px;background:var(--border);margin:3px 0;}
+
+/* Responsive */
+@media(max-width:1100px){
+  .shell{grid-template-columns:200px 1fr 320px;}
+}
+@media(max-width:900px){
+  .shell{grid-template-columns:0 1fr 300px;}
+  .filetree{display:none;}
+}
+@media(max-width:700px){
+  .shell{grid-template-columns:1fr;grid-template-rows:42px 1fr 200px 260px;grid-template-areas:"topbar" "editor" "terminal" "debugpanel";}
+  .filetree{display:none;}
+  .debugpanel{border-left:none;border-top:1px solid var(--border);}
+}
+</style>
+</head>
+<body>
+<div class="ctxm" id="ctxm"></div>
+
+<div class="shell">
+
+<!-- ══ TOPBAR ══ -->
+<div class="topbar">
+  <div class="tb-logo"><div class="tb-ico">🦾</div>Aria Code</div>
+  <div id="ollama-dot" style="width:7px;height:7px;border-radius:50%;background:#3fb950;box-shadow:0 0 6px #3fb950;flex-shrink:0"></div>
+  <span style="font-size:11px;color:var(--txt2);font-family:'JetBrains Mono',monospace" id="model-lbl">-</span>
+  <select class="mode-sel" id="mode-sel" onchange="setMode(this.value)">
+    <option value="normal">💬 Normal</option>
+    <option value="coding" selected>💻 Coding</option>
+    <option value="3d">🎲 3D Design</option>
+  </select>
+  <div class="tb-sp"></div>
+  <div class="tb-ws" onclick="pickWs()">📁 <span id="ws-lbl">.</span></div>
+  <button class="tbtn" onclick="runCode()">▶ Run</button>
+  <button class="tbtn" onclick="runTrace()">🔍 Trace</button>
+  <button class="tbtn" onclick="runProfile()">📊 Profile</button>
+  <button class="tbtn" onclick="analyzeCode()">🔗 Analyze</button>
+  <button class="tbtn g" onclick="quickCommit()">↑ Git</button>
+  <a href="/" class="tb-lnk">🏠</a>
+  <a href="/chat" class="tb-lnk">💬</a>
+  <a href="/status" class="tb-lnk">📊</a>
+</div>
+
+<!-- ══ FILE TREE ══ -->
+<div class="filetree">
+  <div class="pane-hdr">
+    <span class="pane-title">Explorer</span>
+    <div style="display:flex;gap:3px">
+      <div class="icon-btn" onclick="newFile()" title="New File">+</div>
+      <div class="icon-btn" onclick="newFolder()" title="New Folder">📁</div>
+      <div class="icon-btn" onclick="loadTree()" title="Refresh">↺</div>
+    </div>
+  </div>
+  <div class="ft-search-box">
+    <input id="ft-q" placeholder="🔍 filter..." oninput="filterTree(this.value)">
+  </div>
+  <div class="ft-body" id="ft-body"><div style="padding:12px;font-size:11px;color:var(--txt2);font-family:'JetBrains Mono',monospace">⟳ Loading...</div></div>
+</div>
+
+<!-- ══ EDITOR ══ -->
+<div class="editor-col">
+  <div class="tab-bar" id="tab-bar">
+    <div class="tab act" data-id="welcome">
+      <span>🦾</span> Welcome
+      <span class="tab-x">×</span>
+    </div>
+  </div>
+  <div class="editor-toolbar">
+    <button class="et-btn" onclick="saveFile()">💾 Save</button>
+    <button class="et-btn" onclick="runCode()">▶ Run</button>
+    <div class="et-sep"></div>
+    <button class="et-btn" onclick="runTrace()">🔍 Trace</button>
+    <button class="et-btn" onclick="runProfile()">⏱ Profile</button>
+    <button class="et-btn" onclick="analyzeCode()">🔗 Analyze</button>
+    <div class="et-sep"></div>
+    <button class="et-btn" onclick="lintFile()">✓ Lint</button>
+    <button class="et-btn" onclick="formatCode()">✨ Format</button>
+    <div class="tb-sp"></div>
+    <span style="font-size:11px;color:var(--txt2);font-family:'JetBrains Mono',monospace" id="active-file">welcome</span>
+  </div>
+  <div class="editor-wrap">
+    <div class="line-gutter" id="gutter"></div>
+    <textarea class="code-area" id="editor"
+      placeholder="# Open a file or paste code here
+# Then click ▶ Run, 🔍 Trace, ⏱ Profile, or 🔗 Analyze"
+      oninput="onEdit()" onscroll="syncGutter()"
+      onkeydown="onEdKey(event)"
+      onclick="updateCursor()" onkeyup="updateCursor()"></textarea>
+  </div>
+  <div class="status-bar">
+    <div class="sb-item"><div class="sb-dot" id="sb-status" style="background:var(--green);box-shadow:0 0 5px var(--green)"></div><span id="sb-msg">Ready</span></div>
+    <div class="sb-item">Ln <span id="sb-ln">1</span> Col <span id="sb-col">1</span></div>
+    <div class="sb-item"><span id="sb-lang">Python</span></div>
+    <div class="sb-item"><span id="sb-chars">0</span> chars</div>
+    <div style="flex:1"></div>
+    <div class="sb-item" id="sb-run-time" style="color:var(--green)"></div>
+  </div>
+</div>
+
+<!-- ══ DEBUG PANEL (RIGHT) ══ -->
+<div class="debugpanel">
+  <div class="dbg-tabs">
+    <div class="dtab act" data-tab="result" onclick="showDbgTab('result')">📤 Result</div>
+    <div class="dtab" data-tab="trace" onclick="showDbgTab('trace')">🔍 Trace <span class="dbg-count" id="trace-count">0</span></div>
+    <div class="dtab" data-tab="profile" onclick="showDbgTab('profile')">⏱ Profile</div>
+    <div class="dtab" data-tab="datalink" onclick="showDbgTab('datalink')">🔗 Data Link</div>
+    <div class="dtab" data-tab="vars" onclick="showDbgTab('vars')">🔎 Variables</div>
+    <div class="dtab" data-tab="imports" onclick="showDbgTab('imports')">📦 Imports</div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="dpanel show" id="dpanel-result">
+    <div class="dpanel-body">
+      <div class="result-section">
+        <div class="rs-title">Execution Metrics</div>
+        <div class="metric-row" id="metrics">
+          <div class="metric"><div class="metric-val" style="color:var(--txt2)">—</div><div class="metric-lbl">Time ms</div></div>
+          <div class="metric"><div class="metric-val" style="color:var(--txt2)">—</div><div class="metric-lbl">Lines</div></div>
+          <div class="metric"><div class="metric-val" style="color:var(--txt2)">—</div><div class="metric-lbl">Funcs</div></div>
+          <div class="metric"><div class="metric-val" style="color:var(--txt2)">—</div><div class="metric-lbl">Status</div></div>
+        </div>
+      </div>
+      <div class="result-section">
+        <div class="rs-title">Output / stdout</div>
+        <div class="result-block ok" id="result-out">Run code to see output…</div>
+      </div>
+      <div class="result-section" id="result-err-sec" style="display:none">
+        <div class="rs-title">Error / Exception</div>
+        <div class="result-block err" id="result-err"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRACE -->
+  <div class="dpanel" id="dpanel-trace">
+    <div style="padding:8px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <span style="font-size:11px;color:var(--txt2);font-family:'JetBrains Mono',monospace">Step-by-step execution trace</span>
+      <div style="flex:1"></div>
+      <button class="et-btn" onclick="runTrace()" style="font-size:10px;height:22px">↺ Re-trace</button>
+    </div>
+    <div class="dpanel-body">
+      <div id="trace-filter" style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="et-btn" onclick="filterTrace('all')" style="font-size:10px;height:20px">All</button>
+        <button class="et-btn" onclick="filterTrace('call')" style="font-size:10px;height:20px;color:var(--accent)">call</button>
+        <button class="et-btn" onclick="filterTrace('line')" style="font-size:10px;height:20px;color:var(--green)">line</button>
+        <button class="et-btn" onclick="filterTrace('return')" style="font-size:10px;height:20px;color:var(--purple)">return</button>
+        <button class="et-btn" onclick="filterTrace('exception')" style="font-size:10px;height:20px;color:var(--red)">error</button>
+      </div>
+      <div class="trace-steps" id="trace-steps">
+        <div style="font-size:12px;color:var(--txt2);font-family:'JetBrains Mono',monospace">Click 🔍 Trace to start</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="dpanel" id="dpanel-profile">
+    <div style="padding:8px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <span style="font-size:11px;color:var(--txt2);font-family:'JetBrains Mono',monospace">cProfile — function timing</span>
+      <div style="flex:1"></div>
+      <button class="et-btn" onclick="runProfile()" style="font-size:10px;height:22px">↺ Re-profile</button>
+    </div>
+    <div class="dpanel-body" style="padding:0">
+      <div id="profile-bars" style="padding:10px;display:flex;flex-direction:column;gap:6px"></div>
+      <div style="overflow-x:auto">
+        <table class="profile-table" id="profile-table">
+          <thead><tr><th>Function</th><th>File</th><th>Calls</th><th>Total ms</th><th>Cum ms</th></tr></thead>
+          <tbody id="profile-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA LINK -->
+  <div class="dpanel" id="dpanel-datalink">
+    <div style="padding:8px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <span style="font-size:11px;color:var(--txt2);font-family:'JetBrains Mono',monospace">Call Graph & Data Flow</span>
+      <div style="flex:1"></div>
+      <button class="et-btn" onclick="analyzeCode()" style="font-size:10px;height:22px">↺ Re-analyze</button>
+      <button class="et-btn" onclick="analyzeProject()" style="font-size:10px;height:22px">📁 Project</button>
+    </div>
+    <div class="dpanel-body">
+      <div class="graph-legend">
+        <div class="gl-item"><div class="gl-dot" style="background:var(--cyan)"></div>Function</div>
+        <div class="gl-item"><div class="gl-dot" style="background:var(--purple)"></div>Class</div>
+        <div class="gl-item"><div class="gl-dot" style="background:var(--green)"></div>Module</div>
+        <div class="gl-item"><div style="width:20px;height:2px;background:var(--accent)"></div>calls</div>
+      </div>
+      <div class="graph-canvas-wrap" id="graph-wrap" style="height:260px">
+        <canvas class="graph-canvas" id="graph-canvas"></canvas>
+        <div id="graph-empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--txt2);font-family:'JetBrains Mono',monospace">🔗 Click Analyze to build call graph</div>
+      </div>
+      <div class="func-list" id="func-list"></div>
+    </div>
+  </div>
+
+  <!-- VARIABLES -->
+  <div class="dpanel" id="dpanel-vars">
+    <div style="padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <span style="font-size:11px;color:var(--txt2);font-family:'JetBrains Mono',monospace">Variable Assignments (static)</span>
+    </div>
+    <div class="dpanel-body">
+      <div class="var-list" id="var-list">
+        <div style="font-size:12px;color:var(--txt2)">Click 🔗 Analyze first</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORTS -->
+  <div class="dpanel" id="dpanel-imports">
+    <div style="padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <span style="font-size:11px;color:var(--txt2);font-family:'JetBrains Mono',monospace">Import Graph</span>
+    </div>
+    <div class="dpanel-body" style="padding:0">
+      <div id="import-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TERMINAL ══ -->
+<div class="terminal">
+  <div class="term-tabs">
+    <div class="ttab act" onclick="termTab(this,'shell')">Terminal</div>
+    <div class="ttab" onclick="termTab(this,'output')">Output</div>
+    <div class="ttab" onclick="termTab(this,'debug')">Debug Log</div>
+    <div class="term-sp"></div>
+    <div class="icon-btn" onclick="clearTerm()" style="margin-right:6px;color:var(--txt2)">✕</div>
+  </div>
+  <div class="term-body" id="term-body">
+    <div class="tl info">[Aria Code] Ready — Workspace: <span id="term-ws">.</span></div>
+  </div>
+  <div class="term-row">
+    <div class="term-ps" id="term-ps">$ </div>
+    <input class="term-inp" id="term-inp" placeholder="command..." autocomplete="off"
+           onkeydown="onTermKey(event)">
+  </div>
+</div>
+
+</div>
+
+<script>
+const API = '';
+let workspace='.', currentFile=null, currentLang='python';
+let traceData=[], profileData={}, analyzeData={};
+let graphNodes=[], graphEdges=[], graphDrag=null, graphAnim=null;
+let termHist=[], termHIdx=-1, openFiles={};
+
+const LANG_MAP={py:'Python',js:'JavaScript',ts:'TypeScript',html:'HTML',css:'CSS',json:'JSON',md:'Markdown',sh:'Shell',rs:'Rust',go:'Go',java:'Java',c:'C',cpp:'C++',sql:'SQL',txt:'Text'};
+
+// ══ INIT ════════════════════════════════════════════════════════════════
+async function init(){
+  try{
+    const r=await fetch(API+'/api/status'); const d=await r.json();
+    document.getElementById('model-lbl').textContent=d.current_model||'?';
+    document.getElementById('ollama-dot').style.background=d.ollama?'#3fb950':'#f85149';
+    workspace=d.workspace||'.';
+    updWs();
+  }catch(e){setStatus('Server offline','err');}
+  loadTree();
+  // Welcome code
+  document.getElementById('editor').value=`# Aria Code — Demo\n# Click ▶ Run, 🔍 Trace, ⏱ Profile, or 🔗 Analyze\n\ndef greet(name: str) -> str:\n    """Return greeting message."""\n    return f"Hello, {name}!"\n\ndef fibonacci(n: int) -> list[int]:\n    """Generate Fibonacci sequence."""\n    seq = [0, 1]\n    for i in range(2, n):\n        seq.append(seq[-1] + seq[-2])\n    return seq[:n]\n\nclass Calculator:\n    def __init__(self):\n        self.history = []\n    \n    def add(self, a, b):\n        result = a + b\n        self.history.append(f"{a}+{b}={result}")\n        return result\n\n# Main\nmsg = greet("Aria")\nprint(msg)\nfib = fibonacci(10)\nprint(f"Fibonacci: {fib}")\ncalc = Calculator()\nprint(calc.add(42, 58))\n`;
+  onEdit();
+}
+
+function updWs(){
+  const short=workspace.split(/[/\\]/).pop()||workspace;
+  document.getElementById('ws-lbl').textContent=workspace.length>28?'...'+workspace.slice(-25):workspace;
+  document.getElementById('term-ws').textContent=workspace;
+  document.getElementById('term-ps').textContent=short+'$ ';
+}
+
+function setStatus(msg, type='ok'){
+  document.getElementById('sb-msg').textContent=msg;
+  const dot=document.getElementById('sb-status');
+  dot.style.background=type==='err'?'var(--red)':type==='warn'?'var(--orange)':'var(--green)';
+  dot.style.boxShadow=`0 0 5px ${type==='err'?'var(--red)':type==='warn'?'var(--orange)':'var(--green)'}`;
+}
+
+// ══ FILE TREE ═══════════════════════════════════════════════════════════
+const EXT_ICO={py:'🐍',js:'🟡',ts:'🔷',tsx:'🔷',jsx:'🟡',html:'🌐',css:'💅',json:'📋',md:'📖',txt:'📄',sh:'⚡',bat:'⚡',sql:'🗄️',png:'🖼️',jpg:'🖼️',gif:'🖼️',svg:'🎨',rs:'🦀',go:'🐹',java:'☕',c:'©️',cpp:'➕',toml:'⚙️',yaml:'⚙️',yml:'⚙️',env:'🔑'};
+let treeRaw=null, ftFilter='';
+
+async function loadTree(){
+  document.getElementById('ft-body').innerHTML='<div style="padding:10px;font-size:11px;color:var(--txt2);font-family:\'JetBrains Mono\',monospace">⟳ Loading...</div>';
+  try{
+    const r=await fetch(API+`/api/code/tree?path=${encodeURIComponent(workspace)}&depth=4`);
+    treeRaw=await r.json();
+    renderTree(treeRaw, document.getElementById('ft-body'), 0, true);
+  }catch(e){
+    document.getElementById('ft-body').innerHTML=`<div style="padding:10px;font-size:11px;color:var(--red);font-family:'JetBrains Mono',monospace">❌ ${e.message}</div>`;
+  }
+}
+function filterTree(q){ftFilter=q.toLowerCase();if(treeRaw){document.getElementById('ft-body').innerHTML='';renderTree(treeRaw,document.getElementById('ft-body'),0,true);}}
+function renderTree(node,container,depth,root){
+  if(!node)return;
+  if(node.type==='dir'){
+    if(!root){
+      const d=document.createElement('div');d.className='ft-item dir';d.style.paddingLeft=(depth*12+7)+'px';
+      d.innerHTML=`<span>📁</span><span class="fn">${esc(node.name)}/</span>`;
+      let open=false;
+      d.onclick=e=>{e.stopPropagation();open=!open;const nx=d.nextSibling;while(nx&&nx._par===d){const tmp=nx.nextSibling;nx.remove();break;}if(open&&node.children){const sub=document.createElement('div');sub._par=d;node.children.forEach(c=>renderTree(c,sub,depth+1,false));d.insertAdjacentElement('afterend',sub);}};
+      d.oncontextmenu=e=>{e.preventDefault();showCtx(e,[{l:'New File',f:()=>newFileIn(node.path)},{l:'New Folder',f:()=>newFolderIn(node.path)},{l:'Delete',f:()=>deleteItem(node.path),d:true}]);};
+      container.appendChild(d);
+      return;
+    }
+    if(node.children) node.children.forEach(c=>renderTree(c,container,depth,false));
+  }else{
+    if(ftFilter&&!node.name.toLowerCase().includes(ftFilter))return;
+    const ext=(node.ext||'').toLowerCase();
+    const ico=EXT_ICO[ext]||'📄';
+    const d=document.createElement('div');d.className='ft-item';d.style.paddingLeft=(depth*12+7)+'px';
+    const sz=node.size>1024?`${(node.size/1024).toFixed(0)}K`:`${node.size||0}B`;
+    d.innerHTML=`<span>${ico}</span><span class="fn">${esc(node.name)}</span><span class="fsz">${sz}</span>`;
+    d.onclick=()=>openFile(node.path,node.name);
+    d.oncontextmenu=e=>{e.preventDefault();showCtx(e,[{l:'Open',f:()=>openFile(node.path,node.name)},{l:'Copy Path',f:()=>copyText(node.path)},{l:'Analyze',f:()=>analyzeFile(node.path)},{l:'Delete',f:()=>deleteItem(node.path),d:true}]);};
+    container.appendChild(d);
+  }
+}
+async function openFile(path,name){
+  document.querySelectorAll('.ft-item').forEach(i=>i.classList.remove('sel'));event.currentTarget?.classList.add('sel');
+  try{
+    const r=await fetch(API+'/api/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'read_file',payload:{path}})});
+    const d=await r.json();
+    const content=(d.result||'').replace(/^📄 .+\n\n/,'');
+    document.getElementById('editor').value=content;
+    currentFile={path,name};openFiles[path]=content;
+    const ext=name.split('.').pop().toLowerCase();
+    currentLang=LANG_MAP[ext]||'Text';
+    document.getElementById('sb-lang').textContent=currentLang;
+    document.getElementById('active-file').textContent=name;
+    addTab(name,path);onEdit();
+    setStatus(`Opened: ${name}`);
+    termLog(`📄 ${path}`,'info');
+  }catch(e){setStatus(e.message,'err');}
+}
+function addTab(name,path){
+  if(document.querySelector(`.tab[data-path="${path}"]`)){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('act'));
+    document.querySelector(`.tab[data-path="${path}"]`).classList.add('act');return;
+  }
+  const ext=name.split('.').pop().toLowerCase();
+  const ico=EXT_ICO[ext]||'📄';
+  const t=document.createElement('div');t.className='tab';t.dataset.path=path;
+  t.innerHTML=`<span>${ico}</span>${esc(name)}<span class="tab-x" onclick="closeTab(event,'${path}')">×</span>`;
+  t.onclick=()=>{if(openFiles[path]){document.getElementById('editor').value=openFiles[path];currentFile={path,name};onEdit();}document.querySelectorAll('.tab').forEach(tt=>tt.classList.remove('act'));t.classList.add('act');};
+  document.getElementById('tab-bar').appendChild(t);
+  document.querySelectorAll('.tab').forEach(tt=>tt.classList.remove('act'));t.classList.add('act');
+}
+function closeTab(e,path){e.stopPropagation();document.querySelector(`.tab[data-path="${path}"]`)?.remove();delete openFiles[path];if(currentFile?.path===path){currentFile=null;document.getElementById('editor').value='';document.getElementById('active-file').textContent='untitled';}}
+async function saveFile(){
+  if(!currentFile){setStatus('No file open','warn');return;}
+  const content=document.getElementById('editor').value;
+  openFiles[currentFile.path]=content;
+  try{await fetch(API+'/api/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create_file',payload:{path:currentFile.path,content}})});setStatus(`Saved: ${currentFile.name}`);termLog(`💾 ${currentFile.path}`,'ok');}
+  catch(e){setStatus(e.message,'err');}
+}
+async function newFile(){const n=prompt('File name:');if(!n)return;const p=workspace+'/'+n;await fetch(API+'/api/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create_file',payload:{path:p,content:''}})});loadTree();openFile(p,n);}
+async function newFolder(){const n=prompt('Folder name:');if(!n)return;await fetch(API+'/api/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'make_dir',payload:{path:workspace+'/'+n}})});loadTree();}
+async function newFileIn(dir){const n=prompt('File name:');if(!n)return;const p=dir+'/'+n;await fetch(API+'/api/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create_file',payload:{path:p,content:''}})});loadTree();openFile(p,n);}
+async function newFolderIn(dir){const n=prompt('Folder name:');if(!n)return;await fetch(API+'/api/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'make_dir',payload:{path:dir+'/'+n}})});loadTree();}
+async function deleteItem(path){if(!confirm('Delete '+path+'?'))return;await fetch(API+'/api/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete_file',payload:{path}})});loadTree();termLog(`🗑 ${path}`,'warn');}
+async function lintFile(){if(!currentFile)return;try{const r=await fetch(API+'/api/code/lint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:currentFile.path})});const d=await r.json();termLog(d.result||d.error);}catch(e){termLog(e.message,'err');}}
+function formatCode(){const ed=document.getElementById('editor');ed.value=ed.value.split('\n').map(l=>l.trimEnd()).join('\n').trim()+'\n';onEdit();setStatus('Formatted');}
+
+// ══ EDITOR ══════════════════════════════════════════════════════════════
+function onEdit(){
+  const code=document.getElementById('editor').value;
+  const lines=code.split('\n');
+  document.getElementById('gutter').innerHTML=lines.map((_,i)=>`<div class="lg-num">${i+1}</div>`).join('');
+  document.getElementById('sb-chars').textContent=code.length;
+  if(currentFile) openFiles[currentFile.path]=code;
+}
+function syncGutter(){document.getElementById('gutter').scrollTop=document.getElementById('editor').scrollTop;}
+function updateCursor(){
+  const ed=document.getElementById('editor');const pos=ed.selectionStart;const before=ed.value.slice(0,pos);
+  const ln=before.split('\n').length;const col=(before.split('\n').pop()||'').length+1;
+  document.getElementById('sb-ln').textContent=ln;document.getElementById('sb-col').textContent=col;
+}
+function onEdKey(e){
+  if(e.key==='Tab'){e.preventDefault();const pos=e.target.selectionStart;const v=e.target.value;e.target.value=v.slice(0,pos)+'  '+v.slice(e.target.selectionEnd);e.target.selectionStart=e.target.selectionEnd=pos+2;onEdit();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveFile();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runCode();}
+  updateCursor();
+}
+function getCode(){return document.getElementById('editor').value.trim();}
+
+// ══ RUN ══════════════════════════════════════════════════════════════════
+async function runCode(){
+  const code=getCode();if(!code)return;
+  setStatus('Running...','warn');showDbgTab('result');
+  const t0=performance.now();
+  try{
+    const r=await fetch(API+'/api/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'run_python',payload:{code}})});
+    const d=await r.json();const elapsed=performance.now()-t0;
+    const out=d.result||d.error||'(no output)';
+    const isErr=out.includes('Traceback')||out.includes('Error:')||out.includes('❌');
+    document.getElementById('result-out').textContent=out;
+    document.getElementById('result-out').className='result-block '+(isErr?'err':'ok');
+    document.getElementById('result-err-sec').style.display='none';
+    document.getElementById('metrics').innerHTML=`
+      <div class="metric"><div class="metric-val" style="color:var(--green)">${elapsed.toFixed(0)}</div><div class="metric-lbl">Time ms</div></div>
+      <div class="metric"><div class="metric-val" style="color:var(--cyan)">${code.split('\n').length}</div><div class="metric-lbl">Lines</div></div>
+      <div class="metric"><div class="metric-val" style="color:var(--${isErr?'red':'green'})">${isErr?'❌':'✅'}</div><div class="metric-lbl">Status</div></div>`;
+    document.getElementById('sb-run-time').textContent=`${elapsed.toFixed(0)}ms`;
+    setStatus(isErr?'Error':' Done ✅',isErr?'err':'ok');
+    termLog(`▶ ${elapsed.toFixed(0)}ms — ${isErr?'ERROR':'OK'}`);
+    termLog(out.slice(0,500));
+  }catch(e){setStatus(e.message,'err');termLog(e.message,'err');}
+}
+
+// ══ TRACE ════════════════════════════════════════════════════════════════
+async function runTrace(){
+  const code=getCode();if(!code)return;
+  setStatus('Tracing...','warn');showDbgTab('trace');
+  document.getElementById('trace-steps').innerHTML='<div style="color:var(--txt2);font-size:11px;font-family:\'JetBrains Mono\',monospace">⟳ Running trace...</div>';
+  try{
+    const r=await fetch(API+'/api/debug/trace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    const d=await r.json();
+    traceData=d.trace||[];
+    document.getElementById('trace-count').textContent=traceData.length;
+    // Update result panel too
+    if(d.output?.length) document.getElementById('result-out').textContent=d.output.join('\n');
+    if(d.error){
+      document.getElementById('result-err-sec').style.display='';
+      document.getElementById('result-err').textContent=d.error;
+    }
+    document.getElementById('metrics').innerHTML=`
+      <div class="metric"><div class="metric-val" style="color:var(--green)">${d.elapsed_ms||0}</div><div class="metric-lbl">Time ms</div></div>
+      <div class="metric"><div class="metric-val" style="color:var(--cyan)">${traceData.length}</div><div class="metric-lbl">Steps</div></div>
+      <div class="metric"><div class="metric-val" style="color:var(--${d.error?'red':'green'})">${d.error?'❌':'✅'}</div><div class="metric-lbl">Status</div></div>`;
+    renderTrace(traceData);
+    setStatus(`Trace: ${traceData.length} steps`,d.error?'warn':'ok');
+    termLog(`🔍 Trace: ${traceData.length} steps, ${d.elapsed_ms}ms`,'info');
+  }catch(e){setStatus(e.message,'err');termLog(e.message,'err');
+    document.getElementById('trace-steps').innerHTML=`<div style="color:var(--red);font-size:11px">${e.message}</div>`;}
+}
+function renderTrace(steps){
+  const con=document.getElementById('trace-steps');con.innerHTML='';
+  if(!steps.length){con.innerHTML='<div style="color:var(--txt2);font-size:11px">No trace data</div>';return;}
+  steps.forEach((s,i)=>{
+    const wrap=document.createElement('div');wrap.className='trace-step';
+    const evtCls={call:'tse-call',line:'tse-line','return':'tse-return',exception:'tse-exception'}[s.event]||'tse-line';
+    const varEntries=Object.entries(s.locals||{});
+    wrap.innerHTML=`<div class="trace-step-hdr" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ts-event ${evtCls}">${s.event}</span>
+      <span class="ts-func">${s.func||'<module>'}</span>
+      <span class="ts-line">L${s.line}</span>
+      ${varEntries.length?`<span style="font-size:9px;color:var(--txt2)">${varEntries.length} vars</span>`:''}
+    </div>
+    <div class="trace-vars">
+      ${varEntries.map(([k,v])=>`<div class="tvar-row"><span class="tvar-name">${esc(k)}</span><span class="tvar-val">${esc(JSON.stringify(v))}</span><span class="tvar-type">${typeof v}</span></div>`).join('')||'<span style="color:var(--txt2);font-size:10px">no locals</span>'}
+      ${s.arg!=null?`<div class="tvar-row"><span class="tvar-name">→ return</span><span class="tvar-val" style="color:var(--purple)">${esc(JSON.stringify(s.arg))}</span></div>`:''}
+    </div>`;
+    con.appendChild(wrap);
+  });
+}
+function filterTrace(type){
+  const filtered=type==='all'?traceData:traceData.filter(s=>s.event===type);
+  renderTrace(filtered);
+}
+
+// ══ PROFILE ═════════════════════════════════════════════════════════════
+async function runProfile(){
+  const code=getCode();if(!code)return;
+  setStatus('Profiling...','warn');showDbgTab('profile');
+  document.getElementById('profile-bars').innerHTML='<div style="color:var(--txt2);font-size:11px;font-family:\'JetBrains Mono\',monospace">⟳ Profiling...</div>';
+  try{
+    const r=await fetch(API+'/api/debug/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    profileData=await r.json();
+    renderProfile(profileData);
+    setStatus(`Profile: ${profileData.functions?.length||0} funcs`,profileData.error?'warn':'ok');
+    termLog(`⏱ Profile: ${profileData.elapsed_ms}ms, ${profileData.functions?.length} funcs`,'info');
+  }catch(e){setStatus(e.message,'err');termLog(e.message,'err');
+    document.getElementById('profile-bars').innerHTML=`<div style="color:var(--red)">${e.message}</div>`;}
+}
+function renderProfile(d){
+  const funcs=d.functions||[];
+  const maxCum=funcs[0]?.cum_ms||1;
+  // Bar chart
+  const barsDiv=document.getElementById('profile-bars');
+  barsDiv.innerHTML='<div style="font-size:10px;color:var(--txt2);font-family:\'JetBrains Mono\',monospace;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Top Functions by Cumulative Time</div>';
+  funcs.slice(0,8).forEach(f=>{
+    const pct=Math.min(100,(f.cum_ms/maxCum)*100);
+    const div=document.createElement('div');div.style.marginBottom='8px';
+    div.innerHTML=`<div style="display:flex;justify-content:space-between;font-size:11px;font-family:'JetBrains Mono',monospace;margin-bottom:3px">
+      <span style="color:var(--cyan)">${esc(f.func)}</span>
+      <span style="color:var(--green)">${f.cum_ms}ms</span>
+    </div>
+    <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--purple));border-radius:3px;transition:width .5s"></div>
+    </div>
+    <div style="font-size:10px;color:var(--txt2);margin-top:2px">${f.calls} calls · ${f.total_ms}ms total · ${esc(f.file)}:${f.line}</div>`;
+    barsDiv.appendChild(div);
+  });
+  if(d.output?.length) document.getElementById('result-out').textContent=d.output.join('\n');
+  if(d.error){document.getElementById('result-err-sec').style.display='';document.getElementById('result-err').textContent=d.error;}
+  // Table
+  const tbody=document.getElementById('profile-tbody');
+  tbody.innerHTML=funcs.map(f=>`<tr>
+    <td class="td-func">${esc(f.func)}</td>
+    <td class="td-file">${esc(f.file)}:${f.line}</td>
+    <td class="td-calls">${f.calls}</td>
+    <td class="td-time">${f.total_ms}ms</td>
+    <td class="td-time">${f.cum_ms}ms</td>
+  </tr>`).join('');
+}
+
+// ══ ANALYZE / DATA LINK ══════════════════════════════════════════════════
+async function analyzeCode(){
+  const code=getCode();if(!code)return;
+  setStatus('Analyzing...','warn');showDbgTab('datalink');
+  document.getElementById('func-list').innerHTML='<div style="color:var(--txt2);font-size:11px">⟳ Analyzing AST...</div>';
+  try{
+    const r=await fetch(API+'/api/debug/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    analyzeData=await r.json();
+    if(analyzeData.error)throw new Error(analyzeData.error);
+    renderDataLink(analyzeData);
+    renderVars(analyzeData.variables||[]);
+    renderImports(analyzeData.imports||[]);
+    setStatus(`Analyzed: ${analyzeData.functions?.length||0} funcs, ${analyzeData.calls?.length||0} calls`);
+    termLog(`🔗 Analyzed: ${analyzeData.functions?.length} funcs, ${analyzeData.calls?.length} calls, ${analyzeData.imports?.length} imports`,'info');
+  }catch(e){setStatus(e.message,'err');termLog(e.message,'err');
+    document.getElementById('func-list').innerHTML=`<div style="color:var(--red)">${e.message}</div>`;}
+}
+async function analyzeFile(path){
+  setStatus('Analyzing file...','warn');showDbgTab('datalink');
+  try{
+    const r=await fetch(API+'/api/debug/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path})});
+    analyzeData=await r.json();
+    renderDataLink(analyzeData);renderVars(analyzeData.variables||[]);renderImports(analyzeData.imports||[]);
+    setStatus(`Analyzed: ${path.split('/').pop()}`);
+  }catch(e){setStatus(e.message,'err');}
+}
+async function analyzeProject(){
+  setStatus('Analyzing project...','warn');
+  try{
+    const r=await fetch(API+'/api/debug/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:workspace,project:true})});
+    const d=await r.json();
+    termLog(`📁 Project: ${d.file_count} files, ${d.cross_calls?.length} cross-calls`,'info');
+    // Show summary in func list
+    const fl=document.getElementById('func-list');
+    fl.innerHTML=`<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2);margin-bottom:8px">${d.file_count} files analyzed</div>`+
+      (d.files||[]).map(f=>`<div class="func-item"><div class="fi-name">📄 ${esc(f)}</div><div class="fi-meta">${(d.functions[f]||[]).length} functions</div></div>`).join('');
+    setStatus(`Project: ${d.file_count} files`);
+  }catch(e){setStatus(e.message,'err');}
+}
+
+function renderDataLink(d){
+  const funcs=d.functions||[];const calls=d.calls||[];const classes=d.classes||[];
+  document.getElementById('graph-empty').style.display=funcs.length?'none':'flex';
+  if(funcs.length) drawCallGraph(funcs,calls,classes);
+  // Function list
+  const fl=document.getElementById('func-list');
+  const callGraph=d.call_graph||{};
+  fl.innerHTML=funcs.map(f=>{
+    const callees=callGraph[f.name]||[];
+    return `<div class="func-item">
+      <div class="fi-name">${esc(f.name)}(${f.args.map(a=>`<span class="fi-args">${esc(a)}</span>`).join(', ')})</div>
+      <div class="fi-meta">
+        Line ${f.line} · ${f.lines} lines
+        ${f.return?`· <span class="fi-ret">→ ${esc(f.return)}</span>`:''}
+        ${f.decorators?.length?`· @${f.decorators.join('@')}`:''}
+      </div>
+      ${f.doc?`<div style="font-size:10px;color:var(--txt2);font-style:italic;margin-top:3px">${esc(f.doc)}</div>`:''}
+      ${callees.length?`<div class="fi-callers"><span class="call-arrow">→ calls: </span>${callees.map(c=>`<span style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:10px">${esc(c)}</span>`).join(', ')}</div>`:''}
+    </div>`;
+  }).join('')+classes.map(c=>`<div class="func-item">
+    <div class="fi-name" style="color:var(--purple)">class ${esc(c.name)}</div>
+    <div class="fi-meta">Line ${c.line}${c.bases?.length?` extends ${c.bases.join(',')}`:''} · Methods: ${c.methods.join(', ')}</div>
+  </div>`).join('');
+}
+
+// ── CANVAS CALL GRAPH ──────────────────────────────────────────────────────
+function drawCallGraph(funcs, calls, classes){
+  const wrap=document.getElementById('graph-wrap');
+  const canvas=document.getElementById('graph-canvas');
+  canvas.width=wrap.offsetWidth; canvas.height=wrap.offsetHeight;
+  const ctx=canvas.getContext('2d');
+
+  // Build nodes
+  graphNodes=[];graphEdges=[];
+  const COLORS={func:'#58a6ff',cls:'#bc8cff',mod:'#3fb950'};
+  const W=canvas.width,H=canvas.height;
+  // Layout: circle
+  const n=funcs.length+classes.length;
+  const cx=W/2,cy=H/2,R=Math.min(W,H)*0.36;
+  funcs.forEach((f,i)=>{
+    const angle=(i/Math.max(n,1))*Math.PI*2-Math.PI/2;
+    graphNodes.push({id:f.name,label:f.name,x:cx+R*Math.cos(angle),y:cy+R*Math.sin(angle),color:COLORS.func,r:20,type:'func'});
+  });
+  classes.forEach((c,i)=>{
+    const angle=((funcs.length+i)/Math.max(n,1))*Math.PI*2-Math.PI/2;
+    graphNodes.push({id:c.name,label:c.name,x:cx+R*Math.cos(angle),y:cy+R*Math.sin(angle),color:COLORS.cls,r:22,type:'cls'});
+  });
+  calls.slice(0,60).forEach(c=>{
+    graphEdges.push({from:c.caller,to:c.callee,line:c.line});
+  });
+
+  drawGraph(ctx,W,H);
+
+  // Physics animation
+  if(graphAnim) cancelAnimationFrame(graphAnim);
+  let tick=0;
+  function animate(){
+    if(tick<40){
+      // Simple force-directed
+      graphNodes.forEach(a=>{
+        graphNodes.forEach(b=>{
+          if(a===b)return;
+          const dx=a.x-b.x,dy=a.y-b.y;
+          const dist=Math.max(Math.sqrt(dx*dx+dy*dy),1);
+          const force=Math.min(800/(dist*dist),2);
+          a.x+=dx/dist*force; a.y+=dy/dist*force;
+          a.x=Math.max(a.r+5,Math.min(W-a.r-5,a.x));
+          a.y=Math.max(a.r+5,Math.min(H-a.r-5,a.y));
+        });
+        // Attract to center
+        const dx=cx-a.x,dy=cy-a.y;
+        a.x+=dx*0.02; a.y+=dy*0.02;
+      });
+      tick++;
+      ctx.clearRect(0,0,W,H);drawGraph(ctx,W,H);
+      graphAnim=requestAnimationFrame(animate);
+    }
+  }
+  animate();
+}
+function drawGraph(ctx,W,H){
+  ctx.clearRect(0,0,W,H);
+  // Draw edges
+  graphEdges.forEach(e=>{
+    const from=graphNodes.find(n=>n.id===e.from);
+    const to=graphNodes.find(n=>n.id===e.to);
+    if(!from||!to)return;
+    ctx.beginPath();ctx.moveTo(from.x,from.y);ctx.lineTo(to.x,to.y);
+    ctx.strokeStyle='rgba(88,166,255,.3)';ctx.lineWidth=1;ctx.stroke();
+    // Arrow
+    const angle=Math.atan2(to.y-from.y,to.x-from.x);
+    const ax=to.x-to.r*1.2*Math.cos(angle),ay=to.y-to.r*1.2*Math.sin(angle);
+    ctx.beginPath();ctx.moveTo(ax,ay);
+    ctx.lineTo(ax-8*Math.cos(angle-0.4),ay-8*Math.sin(angle-0.4));
+    ctx.lineTo(ax-8*Math.cos(angle+0.4),ay-8*Math.sin(angle+0.4));
+    ctx.closePath();ctx.fillStyle='rgba(88,166,255,.5)';ctx.fill();
+  });
+  // Draw nodes
+  graphNodes.forEach(n=>{
+    ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+    ctx.fillStyle=n.color+'33';ctx.fill();
+    ctx.strokeStyle=n.color;ctx.lineWidth=2;ctx.stroke();
+    // Label
+    ctx.fillStyle='#e6edf3';ctx.font='11px JetBrains Mono, monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    const short=n.label.length>10?n.label.slice(0,8)+'..':n.label;
+    ctx.fillText(short,n.x,n.y);
+    // Glow
+    ctx.shadowColor=n.color;ctx.shadowBlur=8;
+    ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);ctx.strokeStyle=n.color;ctx.lineWidth=1.5;ctx.stroke();
+    ctx.shadowBlur=0;
+  });
+}
+
+function renderVars(vars){
+  document.getElementById('var-list').innerHTML=vars.map(v=>`
+    <div class="var-item">
+      <span class="vi-name">${esc(v.name)}</span>
+      <span class="vi-val">${esc(v.value)}</span>
+      <span class="vi-scope">${esc(v.scope)} L${v.line}</span>
+    </div>`).join('')||'<div style="font-size:12px;color:var(--txt2)">No variables found</div>';
+}
+
+function renderImports(imports){
+  document.getElementById('import-list').innerHTML=imports.map(i=>`
+    <div class="import-item">
+      <span class="imp-mod">${esc(i.module)}</span>
+      ${i.as?`<span class="imp-as">as ${esc(i.as)}</span>`:''}
+      ${i.from?`<span style="font-size:10px;color:var(--txt2)">from ${esc(i.from)}</span>`:''}
+      <div style="flex:1"></div>
+      <span class="imp-line">L${i.line}</span>
+    </div>`).join('')||'<div style="padding:10px;font-size:12px;color:var(--txt2)">No imports</div>';
+}
+
+// ══ TERMINAL ════════════════════════════════════════════════════════════
+const termHist2=[];let termHIdx2=-1;
+function termLog(text,type=''){
+  const b=document.getElementById('term-body');
+  text.split('\n').forEach(l=>{
+    const d=document.createElement('div');d.className='tl'+(type?' '+type:'');d.textContent=l;b.appendChild(d);
+  });
+  b.scrollTop=b.scrollHeight;
+}
+function clearTerm(){document.getElementById('term-body').innerHTML='';}
+function termTab(el,t){document.querySelectorAll('.ttab').forEach(tt=>tt.classList.remove('act'));el.classList.add('act');}
+function onTermKey(e){
+  const inp=document.getElementById('term-inp');
+  if(e.key==='Enter'){
+    const cmd=inp.value.trim();if(!cmd)return;
+    termHist2.unshift(cmd);termHIdx2=-1;inp.value='';
+    termLog(`${workspace.split(/[/\\]/).pop()}$ ${cmd}`,'cmd');
+    runTermCmd(cmd);
+  }else if(e.key==='ArrowUp'){e.preventDefault();termHIdx2=Math.min(termHIdx2+1,termHist2.length-1);inp.value=termHist2[termHIdx2]||'';}
+  else if(e.key==='ArrowDown'){e.preventDefault();termHIdx2=Math.max(termHIdx2-1,-1);inp.value=termHIdx2>=0?termHist2[termHIdx2]:'';}
+}
+async function runTermCmd(cmd){
+  try{
+    const r=await fetch(API+'/api/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'run_shell',payload:{command:cmd,cwd:workspace}})});
+    const d=await r.json();
+    const out=d.result||d.error||'';
+    out.split('\n').forEach(l=>termLog(l,l.startsWith('❌')?'err':l.startsWith('✅')?'ok':''));
+  }catch(e){termLog(e.message,'err');}
+}
+
+// ══ GIT ═════════════════════════════════════════════════════════════════
+async function quickCommit(){
+  const msg=prompt('Commit message:',`Update ${new Date().toISOString().slice(0,10)}`);if(!msg)return;
+  termLog('$ git add . && git commit && git push','cmd');
+  const gitOp=async(op,extra={})=>{
+    const r=await fetch(API+'/api/code/git',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op,cwd:workspace,...extra})});
+    return (await r.json()).result||'';
+  };
+  termLog(await gitOp('add',{files:'.'}));
+  termLog(await gitOp('commit',{message:msg}));
+  termLog(await gitOp('push'));
+  setStatus('Committed & pushed');
+}
+
+// ══ WORKSPACE ════════════════════════════════════════════════════════════
+async function pickWs(){
+  const p=prompt('Workspace path:',workspace);if(!p)return;
+  try{
+    const r=await fetch(API+'/api/code/workspace',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p})});
+    const d=await r.json();
+    if(d.ok){workspace=d.workspace;updWs();loadTree();termLog(`📁 Workspace: ${workspace}`,'info');}
+  }catch(e){termLog(e.message,'err');}
+}
+function setMode(m){
+  fetch(API+'/api/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})}).catch(()=>{});
+  termLog(`Mode: ${m}`,'info');
+}
+
+// ══ DEBUG TAB SWITCH ════════════════════════════════════════════════════
+function showDbgTab(name){
+  document.querySelectorAll('.dpanel').forEach(p=>p.classList.remove('show'));
+  document.querySelectorAll('.dtab').forEach(t=>t.classList.remove('act'));
+  document.getElementById('dpanel-'+name)?.classList.add('show');
+  document.querySelector(`.dtab[data-tab="${name}"]`)?.classList.add('act');
+}
+
+// ══ CONTEXT MENU ════════════════════════════════════════════════════════
+function showCtx(e,items){
+  const m=document.getElementById('ctxm');
+  m.innerHTML=items.map(i=>i.sep?'<div class="ctxm-sep"></div>':`<div class="ctxm-item${i.d?' danger':''}" onclick="closeCtx();(${i.f})()">${i.l}</div>`).join('');
+  m.style.left=e.clientX+'px';m.style.top=e.clientY+'px';m.classList.add('show');
+}
+function closeCtx(){document.getElementById('ctxm').classList.remove('show');}
+document.addEventListener('click',closeCtx);
+
+// ══ HELPERS ══════════════════════════════════════════════════════════════
+function esc(t){return(t||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function copyText(t){navigator.clipboard.writeText(t||'').then(()=>setStatus('Copied!'));}
+
+// ══ START ════════════════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
