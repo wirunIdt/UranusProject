@@ -1,0 +1,20 @@
+C:\Jaochai\UranusProject\aria-v5\modules\system.py:6: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml
+INFO:ARIA.Intranet:DNS responder on UDP 5354
+INFO:ARIA.Intranet:Intranet started — IP:192.168.1.105 DNS:.aria / Files:port 47780
+INFO:ARIA:Intranet module started
+INFO:ARIA.Intranet:File server on port 47780 \u2192 ./intranet_share/
+INFO:ARIA:\U0001f534 Threat Monitor started (interval: 300s)
+INFO:ARIA.Scheduler:Task Scheduler started
+INFO:ARIA.VectorMem:FAISS not found — using cosine similarity fallback (pip install faiss-cpu)
+INFO:ARIA:\U0001f916 ARIA-AGI v5.0.0 starting on port 5000
+INFO:ARIA:\U0001f4e1 Node ID: bd835972 | IP: 192.168.1.105
+INFO:ARIA:\U0001f310 Mesh Port: 47777
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.105:5000
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:ARIA:\u2713 Ollama already running
+INFO:werkzeug:127.0.0.1 - - [16/May/2026 16:28:55] "GET /api/status HTTP/1.1" 200 -
+INFO:ARIA:Threat scan: 0 threats | Level: GREEN

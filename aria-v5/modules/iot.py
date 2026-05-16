@@ -167,7 +167,7 @@ def ping_device(dev_id: str) -> dict:
         dev["status"] = "offline"
         return {"ok": False, "device": dev_id, "status": "offline"}
 
-def read_sensor(dev_id: str) -> dict:
+def read_sensor(dev_id: str, endpoint: str = "/sensor") -> dict:
     return send_command(dev_id, "read")
 
 def get_sensor_history(dev_id: str, limit: int = 50) -> list:
@@ -247,5 +247,29 @@ void loop() { server.handleClient(); }
 
 def get_esp32_template() -> str:
     return ESP32_TEMPLATE
+
+def mqtt_publish(topic: str, payload, qos: int = 0) -> bool:
+    if not _mqtt_client:
+        return False
+    try:
+        if not isinstance(payload, str):
+            payload = json.dumps(payload)
+        result = _mqtt_client.publish(topic, payload, qos=qos)
+        return result.rc == 0
+    except Exception:
+        return False
+
+
+def iot_stats() -> dict:
+    with _LOCK:
+        devices = list(_devices.values())
+        history_points = sum(len(v) for v in _sensor_history.values())
+    return {
+        "devices": len(devices),
+        "online": sum(1 for d in devices if d.get("status") == "online"),
+        "mqtt_available": _HAS_MQTT,
+        "mqtt_connected": _mqtt_client is not None,
+        "history_points": history_points,
+    }
 
 _init_mqtt()

@@ -1,16 +1,41 @@
 """modules/multiagent.py — Multi-Agent: Planner → Researcher → Executor → Critic"""
-import os, json, time, logging, requests
+import os, json, time, logging, requests, re
 from typing import Generator
 
 log = logging.getLogger("ARIA.MultiAgent")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+
+_DANGEROUS_SHELL_PATTERNS = [
+    r"\brm\s+-rf\b",
+    r"\bdel\s+/[sq]\b",
+    r"\brmdir\s+/s\b",
+    r"\bformat\b",
+    r"\bdiskpart\b",
+    r"\breg\s+(add|delete)\b",
+    r"\bshutdown\b",
+    r"\breboot\b",
+    r"\bmkfs\b",
+    r"\bdd\s+if=",
+    r"\bcurl\b.+\|\s*(sh|bash|powershell|pwsh)",
+    r"\biwr\b.+\|\s*(iex|powershell|pwsh)",
+    r"\binvoke-webrequest\b.+\|\s*(iex|powershell|pwsh)",
+]
+
+
+def _shell_allowed(cmd: str) -> tuple[bool, str]:
+    lowered = cmd.lower()
+    for pattern in _DANGEROUS_SHELL_PATTERNS:
+        if re.search(pattern, lowered):
+            return False, f"Blocked potentially dangerous shell command pattern: {pattern}"
+    return True, ""
 
 AGENT_ROLES = {
     "planner": {
         "model": os.environ.get("PLANNER_MODEL", "qwen2.5:7b"),
         "system": """You are the Planner agent. Given a task, decompose it into 3-5 clear steps.
 Output ONLY valid JSON: {"steps": [{"step":1,"action":"...","tool":"...","description":"..."}]}
-Tools available: web_search, shell, http_get, get_weather, get_crypto, send_alert, save_memory, read_file, write_file, finish""",
+Tools available: web_search, shell, http_get, get_weather, get_crypto, send_alert, save_memory, read_file, write_file, finish.
+Use shell/write_file only for clearly requested local work. Do not delete, overwrite, install, exfiltrate secrets, or change security settings unless the user explicitly requested that exact action.""",
     },
     "researcher": {
         "model": os.environ.get("RESEARCHER_MODEL", "qwen2.5:7b"),
@@ -85,7 +110,11 @@ def _execute_tool(tool: str, params: dict) -> str:
             return "\n".join(f"{p['symbol']}: ${p['price']:,.2f} ({p['change24h']:+.2f}%)" for p in prices if "price" in p)
         elif tool == "shell":
             import subprocess
-            r = subprocess.run(params.get("cmd",""), shell=True, capture_output=True, text=True, timeout=30)
+            cmd = params.get("cmd","")
+            allowed, reason = _shell_allowed(cmd)
+            if not allowed:
+                return reason
+            r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
             return (r.stdout + r.stderr).strip()[:1000]
         elif tool == "http_get":
             r = requests.get(params.get("url",""), timeout=8)
@@ -190,3 +219,17 @@ def run_multiagent_sync(task: str) -> dict:
         if ev["type"] == "answer":
             answer = ev["answer"]
     return {"answer": answer, "events": steps}
+
+
+def run_multi_agent(task: str, model: str = None, max_retries: int = 2) -> Generator:
+    """Backward-compatible stream entrypoint used by server.py.
+
+    The current multi-agent module uses per-role models from AGENT_ROLES. The
+    optional model parameter is accepted for older callers and ignored.
+    """
+    yield from run_multiagent(task, max_retries=max_retries)
+
+
+def run_multi_agent_sync(task: str, model: str = None) -> dict:
+    """Backward-compatible sync entrypoint used by older callers."""
+    return run_multiagent_sync(task)

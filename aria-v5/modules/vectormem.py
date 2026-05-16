@@ -181,4 +181,40 @@ def clear():
     if _HAS_FAISS:
         _faiss_index = None; _faiss_ids = []
 
+
+def get_all_vectors(limit: int = 100) -> list:
+    with _LOCK:
+        c = _db()
+        rows = c.execute("SELECT id,text,meta,source,ts FROM vectors ORDER BY ts DESC LIMIT ?", (limit,)).fetchall()
+        c.close()
+    return [
+        {
+            "id": row["id"],
+            "text": row["text"],
+            "meta": json.loads(row["meta"] or "{}"),
+            "source": row["source"],
+            "ts": row["ts"],
+        }
+        for row in rows
+    ]
+
+
+def delete_vector(vector_id: int) -> bool:
+    with _LOCK:
+        c = _db()
+        cur = c.execute("DELETE FROM vectors WHERE id=?", (vector_id,))
+        c.commit()
+        deleted = cur.rowcount > 0
+        c.close()
+    if deleted and _HAS_FAISS:
+        _rebuild_faiss()
+    return deleted
+
+
+# Backward-compatible names used by server.py.
+add_vector = add
+search_vectors = search
+rebuild_faiss = _rebuild_faiss
+vstats = stats
+
 init()

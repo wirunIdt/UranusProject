@@ -200,4 +200,15 @@ def get_adaptive_context(query: str) -> str:
     examples = "\n".join(f"Q: {r['query'][:80]}\nA: {r['response'][:150]}" for r in relevant[:2])
     return f"\n[Similar successful responses for context]\n{examples}\n"
 
+
+def analyze_errors() -> dict:
+    """Backward-compatible helper for older API imports."""
+    return run_improvement_cycle()
+
+
+# Backward-compatible names used by server.py.
+save_feedback = record_feedback
+log_error = record_error
+si_stats = get_stats
+
 init()

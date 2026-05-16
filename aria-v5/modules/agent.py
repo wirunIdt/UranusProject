@@ -2,12 +2,49 @@
 modules/agent.py — AI Agent / Auto-pilot
 Multi-step task planning + execution with tools
 """
-import os, json, time, threading, requests, subprocess, logging
+import os, json, time, threading, requests, subprocess, logging, re
+from pathlib import Path
 from typing import Generator
 
 log = logging.getLogger("ARIA.Agent")
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+WORKSPACE = Path(os.environ.get("WORKSPACE", os.getcwd())).resolve()
+
+_DANGEROUS_SHELL_PATTERNS = [
+    r"\brm\s+-rf\b",
+    r"\bdel\s+/[sq]\b",
+    r"\brmdir\s+/s\b",
+    r"\bformat\b",
+    r"\bdiskpart\b",
+    r"\breg\s+(add|delete)\b",
+    r"\bshutdown\b",
+    r"\breboot\b",
+    r"\bmkfs\b",
+    r"\bdd\s+if=",
+    r"\bcurl\b.+\|\s*(sh|bash|powershell|pwsh)",
+    r"\biwr\b.+\|\s*(iex|powershell|pwsh)",
+    r"\binvoke-webrequest\b.+\|\s*(iex|powershell|pwsh)",
+]
+
+
+def _path_in_workspace(path: str) -> bool:
+    try:
+        target = Path(path).expanduser()
+        if not target.is_absolute():
+            target = WORKSPACE / target
+        target = target.resolve()
+        return target == WORKSPACE or WORKSPACE in target.parents
+    except Exception:
+        return False
+
+
+def _shell_allowed(cmd: str) -> tuple[bool, str]:
+    lowered = cmd.lower()
+    for pattern in _DANGEROUS_SHELL_PATTERNS:
+        if re.search(pattern, lowered):
+            return False, f"Blocked potentially dangerous shell command pattern: {pattern}"
+    return True, ""
 
 # ── Available Tools ───────────────────────────────────────────────────────
 TOOLS = {
@@ -64,6 +101,9 @@ RULES:
 3. After each tool result, decide the next step.
 4. Always call 'finish' when done with the final answer.
 5. Be concise. Max 3-4 tool calls per task.
+6. Use shell/write_file only for clearly requested local work. Do not delete,
+   overwrite, install, exfiltrate secrets, or change security settings unless
+   the user explicitly requested that exact action.
 
 Respond ONLY with valid JSON in this format:
 {{"thought": "your reasoning", "tool": "tool_name", "params": {{"param": "value"}}}}
@@ -114,6 +154,9 @@ def _execute_tool(tool: str, params: dict) -> str:
 
         elif tool == "shell":
             cmd = params.get("cmd", "")
+            allowed, reason = _shell_allowed(cmd)
+            if not allowed:
+                return reason
             r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
             out = (r.stdout + r.stderr).strip()[:2000]
             return out or "(no output)"
@@ -126,6 +169,8 @@ def _execute_tool(tool: str, params: dict) -> str:
         elif tool == "write_file":
             path = params.get("path", "")
             content = params.get("content", "")
+            if not _path_in_workspace(path):
+                return f"Blocked write outside workspace: {path}"
             os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(content)

