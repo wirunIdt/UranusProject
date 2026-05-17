@@ -1,0 +1,57 @@
+{
+  "model": "llama3.1:latest",
+  "ollama_host": "http://localhost:11434",
+  "language": "th",
+  "theme": "dark",
+  "tts_enabled": true,
+  "port": 7860,
+  "host": "127.0.0.1",
+  "secret_key": "96ad2fc2f4d72a5decf31b344681c2642a342932a1306dcde742ee319955c5ca",
+  "private_user": "admin",
+  "private_pass_hash": "c172fe64c7880bc9ad62f514cff1be82f7cee5c336899a811d267fb452494a15",
+  "active_mode": "coding",
+  "jarvis_mode": true,
+  "app_buttons": [
+    {
+      "label": "🌐 Chrome",
+      "cmd": "open chrome",
+      "type": "app"
+    },
+    {
+      "label": "📝 Notepad",
+      "cmd": "open notepad",
+      "type": "app"
+    },
+    {
+      "label": "🎵 Spotify",
+      "cmd": "open spotify",
+      "type": "app"
+    },
+    {
+      "label": "💬 Discord",
+      "cmd": "open discord",
+      "type": "app"
+    },
+    {
+      "label": "📺 YouTube",
+      "url": "https://youtube.com",
+      "type": "web"
+    },
+    {
+      "label": "📧 Gmail",
+      "url": "https://mail.google.com",
+      "type": "web"
+    },
+    {
+      "label": "discoed",
+      "type": "web",
+      "url": "www.discord.com"
+    }
+  ],
+  "modes": {
+    "normal": "You are Aria, a brilliant AI with full system access. Be concise, human, helpful.",
+    "coding": "You are Aria, expert engineer. Provide working code, brief explanation. No fluff.",
+    "3d": "You are Aria, 3D expert (Blender/Three.js/Unity/Unreal/CAD). Precise technical help.",
+    "creative": "You are Aria, creative partner. Imaginative, expressive, inspiring."
+  }
+}
