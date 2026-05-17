@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="theme-color" content="#3fb950">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ARIA">
+<link rel="manifest" href="/manifest.json">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ARIA · WorldMonitor</title>
+<link rel="stylesheet" href="/static/aria.css">
+<style>
+body{overflow:hidden}
+.wm-hub{display:flex;flex-direction:column;height:calc(100vh - 42px);margin-top:42px;overflow:hidden}
+.wm-grid{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:1px;flex:1;background:#21262d;overflow:hidden}
+.wm-card{background:#0d1117;display:flex;flex-direction:column;overflow:hidden;position:relative;cursor:pointer;transition:background .14s}
+.wm-card:hover .wm-go{opacity:1}
+.wm-card-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:80px;opacity:.04;pointer-events:none;user-select:none}
+.wm-card-content{position:relative;z-index:1;padding:20px 24px;flex:1;display:flex;flex-direction:column}
+.wm-card-num{font-size:10px;font-weight:700;color:#30363d;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.wm-card-title{font-size:18px;font-weight:700;color:#c9d1d9;margin-bottom:4px}
+.wm-card-sub{font-size:11px;color:#8b949e;line-height:1.6;flex:1}
+.wm-card-layers{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.wm-badge{padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;border:1px solid}
+.wm-go{position:absolute;bottom:14px;right:16px;background:#21262d;border:1px solid #30363d;color:#8b949e;padding:5px 14px;border-radius:4px;font-size:11px;cursor:pointer;font-family:inherit;opacity:0;transition:opacity .14s;font-weight:600}
+.wm-card:hover{background:#0f141a}
+.status-bar{height:28px;background:#161b22;border-top:1px solid #21262d;display:flex;align-items:center;gap:16px;padding:0 14px;flex-shrink:0;overflow:hidden}
+.sb-item{display:flex;align-items:center;gap:5px;font-size:10px;white-space:nowrap;flex-shrink:0}
+.sb-dot{width:6px;height:6px;border-radius:50%}
+.sb-sep{color:#21262d;font-size:12px}
+</style>
+</head>
+<body>
+<div class="aria-topbar">
+  <button class="aria-hamburger" onclick="toggleMobileNav()">☰</button>
+  <span class="aria-logo">ARIA</span>
+  <span class="aria-sep">·</span>
+  <span class="aria-page">WorldMonitor</span>
+  <nav class="aria-nav">
+    <a href="/">Terminal</a><a href="/code">Code</a><a href="/network">Network</a>
+    <a href="/intranet">Intranet</a><a href="/status">Status</a>
+    <a href="/finance">Finance</a><a href="/worldmonitor" class="active">WorldMonitor</a>
+  </nav>
+  <div class="aria-topbar-right">
+    <div class="aria-status-dot green" id="sys-dot"></div>
+    <span style="font-size:10px;color:var(--t2)" id="wm-ts">--</span>
+  </div>
+</div>
+<nav class="aria-mobile-nav" id="mobile-nav">
+  <a href="/">Terminal</a><a href="/code">Code</a><a href="/network">Network</a>
+  <a href="/intranet">Intranet</a><a href="/status">Status</a>
+  <a href="/finance">Finance</a><a href="/worldmonitor" class="active">WorldMonitor</a>
+</nav>
+
+<div class="wm-hub">
+  <div class="wm-grid">
+
+    <!-- PART 1: Security & Conflict -->
+    <div class="wm-card" onclick="go('/wm/security')">
+      <div class="wm-card-bg">⚔</div>
+      <div class="wm-card-content">
+        <div class="wm-card-num">Part 1 / 4</div>
+        <div class="wm-card-title">Security & Conflict</div>
+        <div class="wm-card-sub">Military bases, conflict zones, nuclear sites, Iran activity, intel hotspots, gamma irradiators, radiation watch, GPS jamming</div>
+        <div class="wm-card-layers">
+          <span class="wm-badge" style="color:#f85149;border-color:rgba(248,81,73,.3)">✖ Armed Conflicts</span>
+          <span class="wm-badge" style="color:#f85149;border-color:rgba(248,81,73,.3)">🎯 Iran Attacks</span>
+          <span class="wm-badge" style="color:#58a6ff;border-color:rgba(88,166,255,.3)">🏛 Military Bases</span>
+          <span class="wm-badge" style="color:#d29922;border-color:rgba(210,153,34,.3)">☢ Nuclear Sites</span>
+          <span class="wm-badge" style="color:#d29922;border-color:rgba(210,153,34,.3)">⚠ Gamma</span>
+          <span class="wm-badge" style="color:#ff6b35;border-color:rgba(255,107,53,.3)">☣ Radiation</span>
+          <span class="wm-badge" style="color:#d2a8ff;border-color:rgba(210,168,255,.3)">📡 GPS Jamming</span>
+          <span class="wm-badge" style="color:#d29922;border-color:rgba(210,153,34,.3)">🔒 Cyber Threats</span>
+        </div>
+      </div>
+      <button class="wm-go">Open Map →</button>
+    </div>
+
+    <!-- PART 2: Infrastructure & Maritime -->
+    <div class="wm-card" onclick="go('/wm/infrastructure')">
+      <div class="wm-card-bg">🌐</div>
+      <div class="wm-card-content">
+        <div class="wm-card-num">Part 2 / 4</div>
+        <div class="wm-card-title">Infrastructure & Maritime</div>
+        <div class="wm-card-sub">ALL undersea cables (50+ worldwide), cable landing points, oil & gas pipelines, strategic waterways, trade routes, ship traffic, spaceports</div>
+        <div class="wm-card-layers">
+          <span class="wm-badge" style="color:#f97316;border-color:rgba(249,115,22,.3)">⚡ Undersea Cables ALL</span>
+          <span class="wm-badge" style="color:#d2a8ff;border-color:rgba(210,168,255,.3)">📍 Landing Points</span>
+          <span class="wm-badge" style="color:#d29922;border-color:rgba(210,153,34,.3)">🛢 Pipelines</span>
+          <span class="wm-badge" style="color:#39d5d0;border-color:rgba(57,213,208,.3)">⚓ Waterways</span>
+          <span class="wm-badge" style="color:#8b949e;border-color:rgba(139,148,158,.3)">🔀 Trade Routes</span>
+          <span class="wm-badge" style="color:#39d5d0;border-color:rgba(57,213,208,.3)">🚢 Ship Traffic</span>
+          <span class="wm-badge" style="color:#d2a8ff;border-color:rgba(210,168,255,.3)">🚀 Spaceports</span>
+        </div>
+      </div>
+      <button class="wm-go">Open Map →</button>
+    </div>
+
+    <!-- PART 3: Aviation, Economy & Technology -->
+    <div class="wm-card" onclick="go('/wm/economy')">
+      <div class="wm-card-bg">📈</div>
+      <div class="wm-card-content">
+        <div class="wm-card-num">Part 3 / 4</div>
+        <div class="wm-card-title">Aviation, Economy & Technology</div>
+        <div class="wm-card-sub">Live flights, economic centers, critical minerals, AI data centers, orbital surveillance (ISS), internet disruptions, military activity</div>
+        <div class="wm-card-layers">
+          <span class="wm-badge" style="color:#58a6ff;border-color:rgba(88,166,255,.3)">✈ Aviation LIVE</span>
+          <span class="wm-badge" style="color:#d29922;border-color:rgba(210,153,34,.3)">💰 Economic Centers</span>
+          <span class="wm-badge" style="color:#58a6ff;border-color:rgba(88,166,255,.3)">💎 Critical Minerals</span>
+          <span class="wm-badge" style="color:#d2a8ff;border-color:rgba(210,168,255,.3)">🖥 AI Data Centers</span>
+          <span class="wm-badge" style="color:#d2a8ff;border-color:rgba(210,168,255,.3)">🛰 ISS Live</span>
+          <span class="wm-badge" style="color:#f85149;border-color:rgba(248,81,73,.3)">📡 Internet Disruptions</span>
+        </div>
+      </div>
+      <button class="wm-go">Open Map →</button>
+    </div>
+
+    <!-- PART 4: Natural Events & Weather -->
+    <div class="wm-card" onclick="go('/wm/natural')">
+      <div class="wm-card-bg">🌍</div>
+      <div class="wm-card-content">
+        <div class="wm-card-num">Part 4 / 4</div>
+        <div class="wm-card-title">Natural Events & Weather</div>
+        <div class="wm-card-sub">Earthquakes realtime (USGS), active fires (NASA FIRMS), volcanoes, weather alerts (NOAA), solar/space weather, climate anomalies, protests, displacement flows</div>
+        <div class="wm-card-layers">
+          <span class="wm-badge" style="color:#f85149;border-color:rgba(248,81,73,.3)">🔴 Earthquakes LIVE</span>
+          <span class="wm-badge" style="color:#f97316;border-color:rgba(249,115,22,.3)">🔥 Fires NASA LIVE</span>
+          <span class="wm-badge" style="color:#ff6b35;border-color:rgba(255,107,53,.3)">🌋 Volcanoes</span>
+          <span class="wm-badge" style="color:#d29922;border-color:rgba(210,153,34,.3)">⛈ Weather Alerts</span>
+          <span class="wm-badge" style="color:#ffd60a;border-color:rgba(255,214,10,.3)">☀ Solar Weather</span>
+          <span class="wm-badge" style="color:#8b949e;border-color:rgba(139,148,158,.3)">📢 Protests</span>
+          <span class="wm-badge" style="color:#8b949e;border-color:rgba(139,148,158,.3)">👥 Displacement</span>
+        </div>
+      </div>
+      <button class="wm-go">Open Map →</button>
+    </div>
+
+  </div>
+
+  <!-- Status bar with live data -->
+  <div class="status-bar">
+    <div class="sb-item"><div class="sb-dot" id="sd-sys" style="background:#d29922"></div><span style="color:#8b949e">CPU:</span><span id="sb-cpu" style="color:#c9d1d9">--</span></div>
+    <span class="sb-sep">|</span>
+    <div class="sb-item"><div class="sb-dot" style="background:#d29922"></div><span style="color:#8b949e">RAM:</span><span id="sb-ram" style="color:#c9d1d9">--</span></div>
+    <span class="sb-sep">|</span>
+    <div class="sb-item" id="sb-ticker" style="overflow:hidden;flex:1;mask-image:linear-gradient(to right,transparent,black 20px,black calc(100% - 20px),transparent)">
+      <div id="sb-tick-inner" style="display:flex;gap:20px;animation:tickm 60s linear infinite;white-space:nowrap">Loading market...</div>
+    </div>
+  </div>
+</div>
+
+<style>@keyframes tickm{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}</style>
+<script src="/static/aria.js"></script>
+<script>
+function go(url){ window.location.href=url; }
+onSysData(d=>{
+  const cpu=d.cpu?.percent||0,ram=d.memory?.percent||0;
+  setText('sb-cpu',cpu.toFixed(0)+'%');setText('sb-ram',ram.toFixed(0)+'%');
+  document.getElementById('sd-sys').style.background=barColor(cpu);
+  document.getElementById('wm-ts').textContent=new Date().toLocaleTimeString();
+});
+(async()=>{
+  const[crypto,idx,forex]=await Promise.all([api('GET','/api/finance/crypto?symbols=BTC,ETH,BNB'),api('GET','/api/finance/indices'),api('GET','/api/finance/forex')]);
+  let items=[];
+  if(Array.isArray(crypto))items.push(...crypto.map(d=>`<span style="margin-right:4px;color:#8b949e">${d.symbol}</span><span style="font-weight:600">\$${d.price>1?d.price.toFixed(2):d.price.toFixed(5)}</span><span style="font-size:9px;${d.change24h>0?'color:#3fb950':'color:#f85149'};margin-left:3px">${d.change24h>0?'+':''}${d.change24h.toFixed(2)}%</span>`));
+  if(Array.isArray(idx))items.push(...idx.slice(0,4).map(d=>`<span style="color:#8b949e;margin-right:4px">${d.symbol}</span><span style="font-weight:600">${d.price.toLocaleString()}</span><span style="font-size:9px;${d.change24h>0?'color:#3fb950':'color:#f85149'};margin-left:3px">${d.change24h>0?'+':''}${d.change24h.toFixed(1)}%</span>`));
+  if(Array.isArray(forex)){const t=forex.find(f=>f.pair==='USD/THB');if(t)items.push(`<span style="color:#8b949e;margin-right:4px">USD/THB</span><span style="font-weight:600">${t.rate.toFixed(2)}</span>`);}
+  const all=[...items,...items].map(i=>`<span style="flex-shrink:0;font-size:10px;font-family:inherit">${i}</span><span style="color:#21262d;margin:0 8px">·</span>`).join('');
+  document.getElementById('sb-tick-inner').innerHTML=all;
+})();
+</script>
+</body>
+</html>
